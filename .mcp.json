@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "zipnative": {
+    "pkinative": {
       "type": "stdio",
       "command": "node",
       "args": ["${CLAUDE_PROJECT_DIR}/dist/cli.js"],
