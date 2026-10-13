@@ -1,0 +1,191 @@
+name: CI
+
+# The `ci` job runs `scripts/gate.ts --ci`, the single definition of "green":
+# the step list lives in that file's STEPS table (typecheck:all, lint,
+# code-tables, build, dist-check, dist-probe, smoke, verify:tool-shape,
+# server-json, test:generate, test:coverage, verify:docs, verify:samples,
+# corpus:pki, validate:pki, interop) and is not repeated here, so CI and the
+# contributor loop cannot drift apart. `--require-all` turns any SKIP into a
+# FAIL: a runner missing a tool goes red instead of quietly passing, and
+# PKINATIVE_INTEROP_REQUIRED=1 holds the OpenSSL interoperability suite to the
+# same rule (every GitHub-hosted image carries OpenSSL 3; see the `os` job for
+# where it hides on Windows and macOS).
+#
+# `npm audit` runs outside the gate on purpose: the gate is hermetic (no
+# network) so its verdict is the same on a laptop and on a runner.
+#
+# The `smoke` step drives the BUILT server (dist/cli.js) over stdio the way an
+# MCP host does and fails on any stdout line that is not a JSON-RPC frame —
+# source tests import the handlers directly and cannot catch that.
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/*.md'
+      - '.github/FUNDING.yml'
+      - 'LICENSE'
+      - '.editorconfig'
+      - '.gitignore'
+  pull_request:
+    branches: [main, master]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/*.md'
+      - '.github/FUNDING.yml'
+      - 'LICENSE'
+      - '.editorconfig'
+      - '.gitignore'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The job ids and the matrices are load-bearing: the main ruleset requires the
+  # status checks `ci (22)`, `ci (24)`, `os (windows-latest)` and
+  # `os (macos-latest)` (.github/rulesets/main.json).
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22, 24]
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      # ubuntu-latest ships OpenSSL 3 on PATH; the version is recorded so a red
+      # interop run is attributable to "our bug" or to "runner image drift".
+      - name: Record the OpenSSL version
+        run: openssl version
+
+      # No lifecycle script of any dependency runs on the runner; the
+      # repository's own .npmrc says the same for every developer machine.
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      - name: Run the quality gate (CI profile)
+        env:
+          PKINATIVE_INTEROP_REQUIRED: '1'
+        run: npx tsx scripts/gate.ts --ci --require-all
+
+      - name: Upload the gate logs on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gate-logs-node${{ matrix.node-version }}
+          path: test-output/.gate/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # The stdio server is spawned by hosts on Windows and macOS too, so the same
+  # gate runs there, on the pinned Node line: the built server over stdio
+  # (TerminateProcess-style SIGTERM on win32, POSIX signals on macOS, CRLF and
+  # path rules, Windows junction semantics in the sandbox), the coverage run,
+  # the sample baseline and the OpenSSL interoperability suite against the
+  # OpenSSL build each platform carries — which is how the "same bytes and the
+  # same verdicts on every host" promise is proven on three operating systems
+  # rather than asserted on one. Both matrix entries are required status
+  # checks (.github/rulesets/main.json).
+  #
+  # harden-runner supports Windows runners in audit mode only, so this job
+  # can never move to `egress-policy: block`; the action does not support
+  # macOS at all, so the step is skipped there (`if: runner.os != 'macOS'`) —
+  # the one documented exemption to "every job starts with harden-runner".
+  os:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+
+    steps:
+      - name: Harden the runner
+        if: runner.os != 'macOS'
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # The Windows image has no `openssl` on PATH, but Git for Windows ships
+      # OpenSSL 3 under its usr/bin; put that directory first so the interop
+      # suite finds the same major as Linux.
+      - name: Expose OpenSSL 3 (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $bin = 'C:\Program Files\Git\usr\bin'
+          if (-not (Test-Path (Join-Path $bin 'openssl.exe'))) { throw "openssl.exe not found under $bin" }
+          Add-Content -Path $env:GITHUB_PATH -Value $bin
+
+      # macOS answers `openssl` with LibreSSL; the interop suite is written
+      # against OpenSSL 3, which the image carries through Homebrew.
+      - name: Expose OpenSSL 3 (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          PREFIX=$(brew --prefix openssl@3)
+          test -x "${PREFIX}/bin/openssl"
+          echo "${PREFIX}/bin" >> "$GITHUB_PATH"
+
+      - name: Record the OpenSSL version
+        shell: bash
+        run: openssl version
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # The same gate as the Linux matrix; `npm audit` stays on Linux (network,
+      # once is enough). The gate builds before the suites that need dist/.
+      - name: Run the quality gate (CI profile)
+        env:
+          PKINATIVE_INTEROP_REQUIRED: '1'
+        run: npx tsx scripts/gate.ts --ci --require-all
+
+      - name: Upload the gate logs on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gate-logs-${{ matrix.os }}
+          path: test-output/.gate/
+          retention-days: 7
+          if-no-files-found: ignore

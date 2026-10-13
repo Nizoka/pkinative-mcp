@@ -1,0 +1,30 @@
+# CODEOWNERS
+
+# Default owner for everything
+* @Nizoka
+
+# MCP server runtime and tool surface
+src/ @Nizoka
+src/tools/ @Nizoka
+
+# Public API and package contract
+src/index.ts @Nizoka
+package.json @Nizoka
+server.json @Nizoka
+tests/_fixtures/ @Nizoka
+
+# OpenSSL-made test material: never regenerated in place (tests/fixtures/PROVENANCE.md)
+tests/fixtures/ @Nizoka
+
+# CI/CD and release automation
+.github/workflows/ @Nizoka
+.github/rulesets/ @Nizoka
+.githooks/ @Nizoka
+scripts/ @Nizoka
+release-notes/ @Nizoka
+CHANGELOG.md @Nizoka
+
+# Agent layer: permissions, the fail-closed guard hook, generated rules, skills
+.claude/ @Nizoka
+.github/ai-governance.json @Nizoka
+.github/AGENT_RULES.md @Nizoka
