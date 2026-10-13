@@ -1,0 +1,5 @@
+{
+    "description": "Encode a subjectAltName value (DNS names, a wildcard, an IPv4 address) to DER, delivered as hex: the bytes create_certificate writes inside the extension's OCTET STRING.",
+    "tool": "encode_x509_structure",
+    "arguments": { "structure": "subject-alt-name", "spec": { "dns": ["svc.example.test", "*.wild.example.test"], "ip": ["192.0.2.1"] } }
+}

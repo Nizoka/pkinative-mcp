@@ -1,0 +1,5 @@
+{
+    "description": "The AlgorithmIdentifier an RSA-PSS signature with that key would carry (digest and salt length included); nothing is signed and the key never leaves the engine.",
+    "tool": "encode_x509_structure",
+    "arguments": { "structure": "signature-algorithm", "signer": { "key": { "path": "fixtures/rsa.key.pem" }, "rsaScheme": "pss" } }
+}

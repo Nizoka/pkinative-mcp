@@ -1,0 +1,5 @@
+{
+    "description": "A host the certificate does not name: valid false with PKI_REASON_NAME_MISMATCH in structuredContent, never isError.",
+    "tool": "check_certificate_name",
+    "arguments": { "certificate": { "path": "fixtures/leaf.crt.der" }, "host": "evil.test" }
+}

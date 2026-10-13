@@ -1,0 +1,5 @@
+{
+    "description": "Decode a critical basicConstraints value (the extnValue content) by its OID: kind, members, and the criticality check.",
+    "tool": "decode_extension",
+    "arguments": { "oid": "2.5.29.19", "valueHex": "30030101ff", "critical": true }
+}

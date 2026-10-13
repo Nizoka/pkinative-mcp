@@ -1,0 +1,7 @@
+{
+    "description": "A TLS server request from a plain EC key (the public key is derived from it; proof of possession verified before the bytes are returned), read back with inspect_csr.",
+    "steps": [
+        { "tool": "create_csr", "arguments": { "spec": { "subject": { "C": "FR", "O": "Acme", "CN": "svc.example.test" }, "extensions": { "subjectAltName": { "dns": ["svc.example.test", "www.svc.example.test"] }, "keyUsage": ["digitalSignature"], "extendedKeyUsage": ["serverAuth"] } }, "signer": { "key": { "path": "fixtures/leaf.key.pem" } }, "encoding": "der" } },
+        { "tool": "inspect_csr", "arguments": { "request": { "derBase64": "<base64 from step 1>" }, "verbosity": "summary" } }
+    ]
+}

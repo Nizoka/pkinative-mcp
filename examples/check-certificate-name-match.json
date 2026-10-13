@@ -1,0 +1,5 @@
+{
+    "description": "The match form: one RFC 6125 comparison of a presented wildcard name against a reference host, no certificate involved.",
+    "tool": "check_certificate_name",
+    "arguments": { "presented": "*.example.test", "reference": "a.example.test" }
+}

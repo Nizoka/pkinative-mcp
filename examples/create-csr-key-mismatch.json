@@ -1,0 +1,6 @@
+{
+    "description": "A request is a proof of possession: signing with a key that is not the public key named is refused with KEY_MISMATCH before anything is written.",
+    "tool": "create_csr",
+    "arguments": { "spec": { "subject": { "CN": "x" } }, "subjectPublicKey": { "path": "fixtures/ed25519.crt.pem" }, "signer": { "key": { "path": "fixtures/leaf.key.pem" } } },
+    "expectError": "KEY_MISMATCH"
+}

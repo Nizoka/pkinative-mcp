@@ -1,0 +1,6 @@
+{
+    "description": "A value that is not a well-formed basicConstraints is refused with PKI_X509_EXTENSION_MALFORMED and the decode_asn1 remedy.",
+    "tool": "decode_extension",
+    "arguments": { "oid": "2.5.29.19", "valueHex": "0500" },
+    "expectError": "PKI_X509_EXTENSION_MALFORMED"
+}
