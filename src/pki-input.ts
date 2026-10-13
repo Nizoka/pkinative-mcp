@@ -201,17 +201,17 @@ export function refuseSecretDer(der: Uint8Array, source: string, ctx: ParseConte
         }
     };
     if (parses(() => parsePrivateKeyInfo(der, probe)) || parses(() => parseEncryptedPrivateKeyInfo(der, probe))) {
-        throw new SecurityError(`${source} parses as a PKCS#8 private key: ${consequence}.`, { remedy: 'inspect_private_key' });
+        throw new SecurityError(`${source} parses as a PKCS#8 private key: ${consequence}; describe it with inspect_private_key instead.`, { remedy: 'inspect_private_key' });
     }
     if (parses(() => parsePkcs12(der, probe))) {
-        throw new SecurityError(`${source} parses as a PKCS#12 file: ${consequence}.`, { remedy: 'inspect_pkcs12' });
+        throw new SecurityError(`${source} parses as a PKCS#12 file: ${consequence}; describe it with inspect_pkcs12 instead.`, { remedy: 'inspect_pkcs12' });
     }
 }
 
 /** {@link refuseSecretDer} for a loaded object: its PEM label is checked first. */
 export function refuseSecretObject(obj: PkiObject, ctx: ParseContext, consequence: string): void {
     if (isSecretLabel(obj.label)) {
-        throw new SecurityError(`input (${obj.source}) is a ${obj.label ?? ''} block: ${consequence}.`, { label: obj.label, remedy: 'inspect_private_key' });
+        throw new SecurityError(`input (${obj.source}) is a ${obj.label ?? ''} block: ${consequence}; describe it with inspect_private_key instead.`, { label: obj.label, remedy: 'inspect_private_key' });
     }
     refuseSecretDer(obj.der, `input (${obj.source})`, ctx, consequence);
 }
