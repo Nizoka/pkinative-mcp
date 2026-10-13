@@ -12,7 +12,7 @@ import { callToolDirect } from '../src/server.js';
 import { decodeAsn1Tool } from '../src/tools/decode-asn1.js';
 import { encodeAsn1Tool, ENCODE_ASN1_TOOL } from '../src/tools/encode-asn1.js';
 import { artefactBytes, assertResultClean, assertValidDer, codeOf, errorCodeOf } from './_pki-assert.js';
-import { AT } from './_pki-fixtures.js';
+import { AT, fixtureBytes } from './_pki-fixtures.js';
 import { cleanupSandbox, makeSandbox } from './_sandbox.js';
 
 const EVERY_TYPE = {
@@ -179,6 +179,18 @@ describe('encode_asn1', () => {
             ['bad encoding', { spec: { type: 'null' }, encoding: 'base64' }],
         ])('VALIDATION_ERROR: %s', async (_name, input) => {
             expect(await codeOf(encodeAsn1Tool(input))).toBe('VALIDATION_ERROR');
+        });
+
+        it('SECURITY_VIOLATION: an encoded value that parses as a PKCS#8 key or a PKCS#12 file is never produced (nor echoed)', async () => {
+            for (const name of ['leaf.key.der', 'leaf.p12'] as const) {
+                const hex = Buffer.from(fixtureBytes(name)).toString('hex');
+                const asDer = await callToolDirect('encode_asn1', { spec: { type: 'der', hex } });
+                expect(errorCodeOf(asDer), `${name} as der`).toBe('SECURITY_VIOLATION');
+                assertResultClean(asDer, name);
+                const asTlv = await callToolDirect('encode_asn1', { spec: { type: 'tlv', class: 'universal', tag: 16, constructed: true, hex: hex.slice(hex.startsWith('3081') ? 6 : hex.startsWith('3082') ? 8 : 4) } });
+                expect(errorCodeOf(asTlv), `${name} as tlv`).toBe('SECURITY_VIOLATION');
+                assertResultClean(asTlv, name);
+            }
         });
 
         it('SECURITY_VIOLATION for a private-key label, LIMIT_CEILING_EXCEEDED above a ceiling', async () => {

@@ -166,6 +166,15 @@ describe('sign_cms', () => {
     });
 
     describe('refusals', () => {
+        it('parses every CRL before embedding it: a PKCS#12 file or a certificate given as a CRL is refused with its PKI_* cause and never echoed', async () => {
+            for (const name of ['plain-keybag.p12', 'leaf.p12', 'leaf.crt.der', 'leaf.key.der'] as const) {
+                const result = await callToolDirect('sign_cms', { content: CONTENT, detached: true, ...LEAF, crls: [fixtureInput(name)] });
+                expect(result.isError, name).toBe(true);
+                expect(errorCodeOf(result), name).toMatch(/^PKI_/);
+                assertResultClean(result, name);
+            }
+        });
+
         it.each([
             ['neither content nor contentDigest', { ...LEAF }],
             ['both content and contentDigest', { content: CONTENT, contentDigest: CONTENT_SHA256, detached: true, ...LEAF }],

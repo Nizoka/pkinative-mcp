@@ -8,7 +8,7 @@
  * signature is verified against the signer certificate BEFORE it is
  * returned.
  */
-import { createSignedData, verifySignerInfoSignature, parseCertificate, parseSignedData, type Certificate } from 'pkinative';
+import { createSignedData, verifySignerInfoSignature, parseCertificate, parseCertificateList, parseSignedData, type Certificate } from 'pkinative';
 import { z } from 'zod';
 
 import { MAX_ATTRIBUTES_INLINE } from '../caps.js';
@@ -172,7 +172,8 @@ export async function signCmsTool(rawInput: unknown): Promise<SignCmsResult> {
         throw new ToolError('VALIDATION_ERROR', 'The signer certificate is required: pass certificate (or a signer.p12 that holds it).', { path: 'certificate', remedy: 'certificate' });
     }
     const extra = [...parseCertificates(await loadPkiBundle(input.chain, 'chain', LABELS.certificate, ctx), 'chain certificate', ctx), ...loaded.chain];
-    const crls = (await loadPkiBundle(input.crls, 'crls', LABELS.crl, ctx)).map((o) => o.der);
+    // Parsed before they are embedded: a SignedData carries what the caller says it carries, never bytes it cannot read.
+    const crls = (await loadPkiBundle(input.crls, 'crls', LABELS.crl, ctx)).map((o) => guard(`Cannot read the CRL (${o.source})`, () => parseCertificateList(o.der, ctx.options)).der);
     const content = input.content === undefined ? undefined : (await loadContent(input.content, 'content')).bytes;
     const contentDigest = input.contentDigest === undefined ? undefined : fromHex(input.contentDigest);
     if (input.contentDigest !== undefined && (contentDigest === undefined || contentDigest.length === 0)) {
@@ -240,7 +241,7 @@ export const SIGN_CMS_TOOL = defineTool<SignCmsResult>({
     title: 'Sign CMS (RFC 5652 SignedData, attached or detached, Web Crypto signed)',
     kind: 'artefact',
     description:
-        "Produce an RFC 5652 SignedData over `content` (attached, or `detached:true`) or over a precomputed `contentDigest` (detached only — the PDF /ByteRange case), with ONE signer: `signer` (a PKCS#8 key or a PKCS#12 file, imported as a NON-EXTRACTABLE Web Crypto key — nothing generates or exports a key here) and `certificate` (required with signer.key; a PKCS#12 bag's certificate serves otherwise), `chain` and `crls` embedded verbatim. Signed attributes are always written: contentType, messageDigest, signingTime (default PKINATIVE_MCP_AT or now, whole seconds; 'none' omits it — pin it for reproducible bytes), SigningCertificateV2 and CMSAlgorithmProtection (on by default; CAdES / PAdES need them), plus your `signedAttributes` / `unsignedAttributes` (DER Attributes as hex). `sid` defaults to issuerAndSerialNumber (keep it unless the reader is known). The new signature is verified against the signer certificate BEFORE it is returned (KEY_MISMATCH otherwise). RSA keys need signer.rsaScheme; SHA-1 needs allowSha1:true. Output DER (default; .p7s), PEM (label CMS) or hex, inline or as a sandbox file (never overwritten). Add a counter time-stamp afterwards with amend_cms.",
+        "Produce an RFC 5652 SignedData over `content` (attached, or `detached:true`) or over a precomputed `contentDigest` (detached only — the PDF /ByteRange case), with ONE signer: `signer` (a PKCS#8 key or a PKCS#12 file, imported as a NON-EXTRACTABLE Web Crypto key — nothing generates or exports a key here) and `certificate` (required with signer.key; a PKCS#12 bag's certificate serves otherwise), `chain` and `crls` parsed (never embedded unread) then embedded. Signed attributes are always written: contentType, messageDigest, signingTime (default PKINATIVE_MCP_AT or now, whole seconds; 'none' omits it — pin it for reproducible bytes), SigningCertificateV2 and CMSAlgorithmProtection (on by default; CAdES / PAdES need them), plus your `signedAttributes` / `unsignedAttributes` (DER Attributes as hex). `sid` defaults to issuerAndSerialNumber (keep it unless the reader is known). The new signature is verified against the signer certificate BEFORE it is returned (KEY_MISMATCH otherwise). RSA keys need signer.rsaScheme; SHA-1 needs allowSha1:true. Output DER (default; .p7s), PEM (label CMS) or hex, inline or as a sandbox file (never overwritten). Add a counter time-stamp afterwards with amend_cms.",
     inputSchema: SIGN_CMS_INPUT_SCHEMA,
     outputSchema: SIGN_CMS_OUTPUT_SCHEMA,
     annotations: PRODUCES,

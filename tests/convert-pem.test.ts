@@ -197,6 +197,20 @@ describe('convert_pem', () => {
             expect(await codeOf(convertPem({ mode: 'decode', input: { pem: '-----BEGIN CERTIFICATE-----\nBQA=\n' } }))).toBe('PKI_PEM_UNTERMINATED');
         });
 
+        it('SECURITY_VIOLATION: encode refuses DER that parses as a PKCS#8 key (plain or encrypted) or a PKCS#12 file under any label, never echoing it', async () => {
+            for (const [name, label] of [['leaf.key.der', 'CERTIFICATE'], ['leaf.p12', 'PKCS12'], ['plain-keybag.p12', 'DATA'], ['nomac.p12', 'X509 CRL']] as const) {
+                const result = await callToolDirect('convert_pem', { mode: 'encode', input: fixtureInput(name), label });
+                expect(errorCodeOf(result), name).toBe('SECURITY_VIOLATION');
+                assertResultClean(result, name);
+            }
+            const enc = new Uint8Array(Buffer.from(fixtureText('leaf.key.enc.pem').replace(/-----[^-]+-----/g, '').replace(/\s+/g, ''), 'base64'));
+            const encrypted = await callToolDirect('convert_pem', { mode: 'encode', input: { derBase64: Buffer.from(enc).toString('base64') }, label: 'CERTIFICATE' });
+            expect(errorCodeOf(encrypted)).toBe('SECURITY_VIOLATION');
+            assertResultClean(encrypted);
+            // A certificate under an odd label is still produced: the sniff refuses key material, not labels.
+            expect((await callToolDirect('convert_pem', { mode: 'encode', input: fixtureInput('leaf.crt.der'), label: 'TRUSTED CERTIFICATE' })).isError).not.toBe(true);
+        });
+
         it('SECURITY_VIOLATION: never produces a private-key labelled block', async () => {
             const result = await callToolDirect('convert_pem', { mode: 'encode', input: fixtureInput('leaf.key.der'), label: 'PRIVATE KEY' });
             expect(errorCodeOf(result)).toBe('SECURITY_VIOLATION');

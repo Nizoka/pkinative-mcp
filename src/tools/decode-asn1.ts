@@ -10,9 +10,6 @@ import {
     decodeAsn1Sequence,
     encodeAsn1Node,
     getOidName,
-    parseEncryptedPrivateKeyInfo,
-    parsePkcs12,
-    parsePrivateKeyInfo,
     readBitString,
     readBoolean,
     readEnumerated,
@@ -32,12 +29,12 @@ import {
 import { z } from 'zod';
 
 import { MAX_PREVIEW_BYTES, MAX_TREE_NODES } from '../caps.js';
-import { createDiagnosticSink, DIAGNOSTICS_OUTPUT_PROPERTIES, type DiagnosticsReport } from '../diagnostics.js';
-import { SecurityError, ToolError } from '../errors.js';
+import { DIAGNOSTICS_OUTPUT_PROPERTIES, type DiagnosticsReport } from '../diagnostics.js';
+import { ToolError } from '../errors.js';
 import { emitArtefact, outputInputProperties, outputShape } from '../output.js';
-import { createParseContext, PARSE_INPUT_PROPERTIES, type ParseContext } from '../parse-context.js';
+import { createParseContext, PARSE_INPUT_PROPERTIES } from '../parse-context.js';
 import { guard } from '../pki-errors.js';
-import { isSecretLabel, LABELS, loadPkiObject, pkiInputSchema, PkiInputSchema, type PkiObject } from '../pki-input.js';
+import { LABELS, loadPkiObject, pkiInputSchema, PkiInputSchema, refuseSecretObject } from '../pki-input.js';
 import { PROJECTION_INPUT_PROPERTIES } from '../projection.js';
 import { TIME_VIEW_SCHEMA, timeView } from '../views.js';
 import { toHex, type Wire } from '../wire.js';
@@ -206,29 +203,6 @@ export const DECODE_ASN1_SUMMARY_PROPERTIES = {
     diagnosticCount: { type: 'integer' },
 } as const;
 
-/** A private key or a PKCS#12 file parses as one: the tree would dump its bytes. */
-function refuseSecretObject(obj: PkiObject, ctx: ParseContext): void {
-    if (isSecretLabel(obj.label)) {
-        throw new SecurityError(`input (${obj.source}) is a ${obj.label ?? ''} block: a node tree would dump private-key bytes.`, { label: obj.label, remedy: 'inspect_private_key' });
-    }
-    // Cheap structural probes with a throwaway sink (their diagnostics are not the caller's) and BER tolerance.
-    const probe: PkiParseOptions = { ...ctx.options, ...createDiagnosticSink(false).options, encodingRules: 'ber', strict: false };
-    const parses = (fn: () => unknown): boolean => {
-        try {
-            fn();
-            return true;
-        } catch {
-            return false;
-        }
-    };
-    if (parses(() => parsePrivateKeyInfo(obj.der, probe)) || parses(() => parseEncryptedPrivateKeyInfo(obj.der, probe))) {
-        throw new SecurityError(`input (${obj.source}) parses as a PKCS#8 private key: a node tree would dump its bytes.`, { remedy: 'inspect_private_key' });
-    }
-    if (parses(() => parsePkcs12(obj.der, probe))) {
-        throw new SecurityError(`input (${obj.source}) parses as a PKCS#12 file: a node tree would dump its bytes.`, { remedy: 'inspect_pkcs12' });
-    }
-}
-
 /** Follow `nodePath` through the children; NOT_FOUND names the range available at the failing step. */
 export function selectNode(root: Asn1Node, nodePath: string): Asn1Node {
     let node = root;
@@ -323,7 +297,7 @@ export async function decodeAsn1Tool(rawInput: unknown): Promise<DecodeAsn1Resul
     const input = parseInput(InputSchema, rawInput);
     const ctx = createParseContext(input);
     const obj = await loadPkiObject(input.input, 'input', LABELS.any, ctx);
-    refuseSecretObject(obj, ctx);
+    refuseSecretObject(obj, ctx, 'a node tree would dump its bytes');
     const opts = { ...ctx.options, allowTrailingData: input.allowTrailingData };
     const common = { label: obj.label ?? null, sizeBytes: obj.der.byteLength };
 

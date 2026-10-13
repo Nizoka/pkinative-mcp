@@ -13,6 +13,7 @@ import { DIAGNOSTICS_OUTPUT_PROPERTIES, type DiagnosticsReport } from '../diagno
 import { ARTEFACT_OUTPUT_PROPERTIES, emitArtefact, outputInputProperties, outputShape, type OutputResult } from '../output.js';
 import { createParseContext, PARSE_INPUT_PROPERTIES } from '../parse-context.js';
 import { guard } from '../pki-errors.js';
+import { refuseSecretDer } from '../pki-input.js';
 import { defineTool, WRITES } from './_definition.js';
 import { parseInput, ParseShape, withDiagnostics } from './_shared.js';
 import { assertProducibleLabel, MAX_PEM_LABEL_LENGTH, PEM_LABEL_PATTERN } from './convert-pem.js';
@@ -75,6 +76,7 @@ export async function encodeAsn1Tool(rawInput: unknown): Promise<EncodeAsn1Resul
     const ctx = createParseContext(input);
     if (input.label !== undefined) assertProducibleLabel(input.label, 'label');
     const der = encodeSpec(input.spec, ctx);
+    refuseSecretDer(der, 'the encoded value', ctx, 'this server never produces key material');
     const root = guard('Cannot decode the value just encoded', () => decodeAsn1(der, ctx.options));
     let nodeCount = 0;
     const count = (node: typeof root): void => {
@@ -101,7 +103,7 @@ export const ENCODE_ASN1_TOOL = defineTool<EncodeAsn1Result>({
     title: 'Encode ASN.1 (JSON node spec to DER)',
     kind: 'artefact',
     description:
-        "Encode a JSON node spec into DER through the engine's own encoders: `spec` is one node { type, … } — boolean (value), integer / enumerated (value: integer, decimal or 0x-hex string, negative allowed), null, bit-string (hex, unusedBits), named-bits (bits[]), octet-string (hex), oid / relative-oid (value), string (stringType utf8|numeric|printable|teletex|ia5|visible|universal|bmp, value), time (value: ISO instant or epoch ms; timeType UTCTime|GeneralizedTime|rfc5280 — the RFC 5280 rule by default), sequence / set / set-of (children[]; set-of is sorted as DER requires), explicit / implicit (tag, class universal|application|context|private, inner), tlv (class, tag, constructed, hex) and der (hex of one pre-encoded value, checked). Nesting is bounded by limits.maxDepth (PKI_LIMIT_EXCEEDED). The bytes are decoded back for the summary (root tag, node count). Output DER (default), hex (inline, ≤ 64 KiB) or PEM under `label`, inline as an embedded resource or as a sandbox file (never overwritten). Refuses a malformed node naming its JSON path ($.children[1].value …), a PEM encoding without label, a private-key label (SECURITY_VIOLATION); a value the engine cannot encode is PKI_ASN1_* / PKI_OID_INVALID. Deterministic: the same spec gives the same bytes. The inverse of decode_asn1 (its tree uses the same vocabulary).",
+        "Encode a JSON node spec into DER through the engine's own encoders: `spec` is one node { type, … } — boolean (value), integer / enumerated (value: integer, decimal or 0x-hex string, negative allowed), null, bit-string (hex, unusedBits), named-bits (bits[]), octet-string (hex), oid / relative-oid (value), string (stringType utf8|numeric|printable|teletex|ia5|visible|universal|bmp, value), time (value: ISO instant or epoch ms; timeType UTCTime|GeneralizedTime|rfc5280 — the RFC 5280 rule by default), sequence / set / set-of (children[]; set-of is sorted as DER requires), explicit / implicit (tag, class universal|application|context|private, inner), tlv (class, tag, constructed, hex) and der (hex of one pre-encoded value, checked). Nesting is bounded by limits.maxDepth (PKI_LIMIT_EXCEEDED). The bytes are decoded back for the summary (root tag, node count). Output DER (default), hex (inline, ≤ 64 KiB) or PEM under `label`, inline as an embedded resource or as a sandbox file (never overwritten). Refuses a malformed node naming its JSON path ($.children[1].value …), a PEM encoding without label, a private-key label, a value that parses as a PKCS#8 key or a PKCS#12 file (SECURITY_VIOLATION — nothing here produces key material); a value the engine cannot encode is PKI_ASN1_* / PKI_OID_INVALID. Deterministic: the same spec gives the same bytes. The inverse of decode_asn1 (its tree uses the same vocabulary).",
     inputSchema: ENCODE_ASN1_INPUT_SCHEMA,
     outputSchema: ENCODE_ASN1_OUTPUT_SCHEMA,
     annotations: WRITES,

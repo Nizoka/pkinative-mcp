@@ -12,12 +12,13 @@
  * reduced to its first block; a bundle input takes every block of every item.
  */
 import { promises as fs } from 'node:fs';
-import { decodePem } from 'pkinative';
+import { decodePem, parseEncryptedPrivateKeyInfo, parsePkcs12, parsePrivateKeyInfo, type PkiParseOptions } from 'pkinative';
 import { z } from 'zod';
 
 import { decodeDerBase64 } from './base64.js';
 import { assertInputWithin, MAX_BUNDLE_ITEMS } from './caps.js';
-import { ToolError } from './errors.js';
+import { createDiagnosticSink } from './diagnostics.js';
+import { SecurityError, ToolError } from './errors.js';
 import type { ParseContext } from './parse-context.js';
 import { guard } from './pki-errors.js';
 import { PKI_INPUT_EXTENSIONS, resolveInputFile } from './sandbox.js';
@@ -178,4 +179,39 @@ export async function loadPkiBundle(inputs: readonly PkiInputFields[] | undefine
 /** True when a PEM label (or an undefined one for DER) names secret material. */
 export function isSecretLabel(label: string | undefined): boolean {
     return label !== undefined && SECRET_LABELS.includes(label);
+}
+
+/**
+ * Refuse bytes that parse as a PKCS#8 private key (plain or encrypted) or a
+ * PKCS#12 file, wherever a tool would re-emit, wrap, embed or dump them:
+ * decode_asn1 (a node tree), convert_pem encode (a PEM block under any
+ * label), encode_asn1 (the value produced). Cheap structural probes with a
+ * throwaway sink (their diagnostics are not the caller's) and BER tolerance.
+ *
+ * @throws {SecurityError} SECURITY_VIOLATION naming the remedy tool.
+ */
+export function refuseSecretDer(der: Uint8Array, source: string, ctx: ParseContext, consequence: string): void {
+    const probe: PkiParseOptions = { ...ctx.options, ...createDiagnosticSink(false).options, encodingRules: 'ber', strict: false };
+    const parses = (fn: () => unknown): boolean => {
+        try {
+            fn();
+            return true;
+        } catch {
+            return false;
+        }
+    };
+    if (parses(() => parsePrivateKeyInfo(der, probe)) || parses(() => parseEncryptedPrivateKeyInfo(der, probe))) {
+        throw new SecurityError(`${source} parses as a PKCS#8 private key: ${consequence}.`, { remedy: 'inspect_private_key' });
+    }
+    if (parses(() => parsePkcs12(der, probe))) {
+        throw new SecurityError(`${source} parses as a PKCS#12 file: ${consequence}.`, { remedy: 'inspect_pkcs12' });
+    }
+}
+
+/** {@link refuseSecretDer} for a loaded object: its PEM label is checked first. */
+export function refuseSecretObject(obj: PkiObject, ctx: ParseContext, consequence: string): void {
+    if (isSecretLabel(obj.label)) {
+        throw new SecurityError(`input (${obj.source}) is a ${obj.label ?? ''} block: ${consequence}.`, { label: obj.label, remedy: 'inspect_private_key' });
+    }
+    refuseSecretDer(obj.der, `input (${obj.source})`, ctx, consequence);
 }

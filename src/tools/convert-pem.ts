@@ -15,7 +15,7 @@ import { DIAGNOSTICS_OUTPUT_PROPERTIES, type DiagnosticsReport } from '../diagno
 import { SecurityError, ToolError } from '../errors.js';
 import { ARTEFACT_OUTPUT_PROPERTIES, emitArtefact, outputInputProperties, outputShape, type ArtefactEncoding } from '../output.js';
 import { createParseContext, PARSE_INPUT_PROPERTIES, type ParseContext } from '../parse-context.js';
-import { decodePemBlocks, isSecretLabel, LABELS, looksLikePem, pkiInputSchema, PkiInputSchema, type PkiInputFields } from '../pki-input.js';
+import { decodePemBlocks, isSecretLabel, LABELS, looksLikePem, pkiInputSchema, PkiInputSchema, refuseSecretDer, type PkiInputFields } from '../pki-input.js';
 import { PROJECTION_INPUT_PROPERTIES } from '../projection.js';
 import { PKI_INPUT_EXTENSIONS, resolveInputFile } from '../sandbox.js';
 import { defineTool, PROJECTION_NOTE, projectableOutputSchema, WRITES, type ArtefactAttachment } from './_definition.js';
@@ -231,6 +231,7 @@ async function encode(input: z.infer<typeof InputSchema>, ctx: ParseContext): Pr
     if (looksLikePem(bytes)) {
         throw new ToolError('VALIDATION_ERROR', `input (${source}) is already PEM text: encode wraps DER bytes — decode it with mode:'decode' (extractIndex delivers a block as DER).`, { path: 'input', remedy: "mode:'decode'" });
     }
+    refuseSecretDer(bytes, `input (${source})`, ctx, 'a PEM block would carry private-key bytes under any label');
     const artefact = await emitArtefact(bytes, {
         mode: input.outputMode,
         encoding: 'pem',
@@ -262,7 +263,7 @@ export const CONVERT_PEM_TOOL = defineTool<ConvertPemResult>({
     title: 'Convert PEM (list and extract blocks, or wrap DER)',
     kind: 'read',
     description:
-        "The RFC 7468 layer. mode:'decode' lists every block of a PEM text (index, label, DER size, offset, RFC 1421 headers under pemMode:'lax', SHA-256 of the DER) — `label` keeps one kind, `extractIndex` also delivers that block as an artefact (encoding 'der' by default, 'pem' or 'hex'; inline as an embedded resource, or as a sandbox file with outputMode:'file' + outputPath, never overwritten). mode:'encode' wraps DER bytes (derBase64 or a DER file path) into one strict PEM block under `label` (required) and delivers it as the artefact (64-character lines, LF). A private-key block (PRIVATE KEY, ENCRYPTED PRIVATE KEY, RSA/EC/DSA PRIVATE KEY) is listed by label and size but never extracted, and never produced: SECURITY_VIOLATION (use inspect_private_key). Refuses: derBase64 in decode, pem in encode, an encoding other than 'pem' in encode, a file output without extractIndex (VALIDATION_ERROR); an index past the last block (NOT_FOUND); a label absent from the text (PKI_PEM_UNEXPECTED_LABEL); a malformed text (PKI_PEM_* — pemMode:'lax' tolerates whitespace, line length and headers; a missing base64 padding is refused in both modes). Token-frugal: verbosity:'summary' (count + labels), fields:[…].",
+        "The RFC 7468 layer. mode:'decode' lists every block of a PEM text (index, label, DER size, offset, RFC 1421 headers under pemMode:'lax', SHA-256 of the DER) — `label` keeps one kind, `extractIndex` also delivers that block as an artefact (encoding 'der' by default, 'pem' or 'hex'; inline as an embedded resource, or as a sandbox file with outputMode:'file' + outputPath, never overwritten). mode:'encode' wraps DER bytes (derBase64 or a DER file path) into one strict PEM block under `label` (required) and delivers it as the artefact (64-character lines, LF). A private-key block (PRIVATE KEY, ENCRYPTED PRIVATE KEY, RSA/EC/DSA PRIVATE KEY) is listed by label and size but never extracted, and never produced: SECURITY_VIOLATION (use inspect_private_key) — DER that parses as a PKCS#8 key or a PKCS#12 file is refused under ANY label. Refuses: derBase64 in decode, pem in encode, an encoding other than 'pem' in encode, a file output without extractIndex (VALIDATION_ERROR); an index past the last block (NOT_FOUND); a label absent from the text (PKI_PEM_UNEXPECTED_LABEL); a malformed text (PKI_PEM_* — pemMode:'lax' tolerates whitespace, line length and headers; a missing base64 padding is refused in both modes). Token-frugal: verbosity:'summary' (count + labels), fields:[…].",
     inputSchema: CONVERT_PEM_INPUT_SCHEMA,
     rawOutputSchema: CONVERT_PEM_OUTPUT_SCHEMA,
     outputSchema: projectableOutputSchema(CONVERT_PEM_OUTPUT_SCHEMA, CONVERT_PEM_SUMMARY_PROPERTIES, `The blocks of a PEM text (decode) or the PEM artefact facts (encode).${PROJECTION_NOTE}`),
