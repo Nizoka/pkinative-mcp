@@ -27,6 +27,9 @@ export function decodeBase64Field(value: string, field: string): Uint8Array {
  * the authority on what the bytes are.
  */
 export function decodeDerBase64(value: string, field = 'derBase64'): Uint8Array {
+    if (/-----BEGIN /.test(value)) {
+        throw new ToolError('VALIDATION_ERROR', `${field} holds PEM text — pass it in the \`pem\` member instead (derBase64 is the raw DER as base64).`, { field, remedy: 'pem' });
+    }
     const bytes = decodeBase64Field(value, field);
     if (bytes.length === 0) {
         throw new ToolError('VALIDATION_ERROR', `${field} decodes to an empty buffer.`, { field });

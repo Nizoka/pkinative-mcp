@@ -58,7 +58,7 @@ export interface ToolDefinition {
 }
 
 /** Type-safe helper: a tool module declares its definition with its own result type, erased for the registry. */
-export function defineTool<R extends Record<string, unknown>>(def: Omit<ToolDefinition, 'handler' | 'text' | 'summary'> & {
+export function defineTool<R extends object>(def: Omit<ToolDefinition, 'handler' | 'text' | 'summary'> & {
     readonly handler: (args: unknown) => Promise<R>;
     readonly text: (result: R) => string;
     readonly summary?: (result: R) => Record<string, unknown>;
