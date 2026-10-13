@@ -1,4 +1,4 @@
-# pkinative-cli — the Python linter of the certificates the CLI creates
+# pkinative-mcp — the Python linter of the certificates the server creates
 # (tests/interop/lint.test.ts): DigiCert pkilint and every
 # dependency they need on Linux, pinned by version and by the SHA-256 of
 # every file PyPI publishes for that version. The conformance workflow
