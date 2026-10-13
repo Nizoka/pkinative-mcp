@@ -1,0 +1,5 @@
+{
+    "description": "Prove an encrypted EC key is usable: decrypt it into a non-extractable Web Crypto key and describe the handle (type, algorithm, usages) — the key never leaves the engine.",
+    "tool": "inspect_private_key",
+    "arguments": { "key": { "path": "fixtures/leaf.key.enc.pem" }, "tryImport": true, "password": "test-only-password", "keyType": "ec-p256", "fields": ["imported", "encryption.scheme"] }
+}

@@ -1,0 +1,5 @@
+{
+    "description": "A legacy (RC2 / 3DES, RFC 7292 Appendix B MAC) PKCS#12 is described before anyone types a password: the MAC kind is pkcs12-kdf and the scheme is named, so the OpenSSL 3.4 conversion can be run first.",
+    "tool": "inspect_pkcs12",
+    "arguments": { "pkcs12": { "path": "fixtures/legacy.p12" }, "fields": ["mac.kind", "contents.path", "contents.encryption.scheme"] }
+}

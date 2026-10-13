@@ -1,0 +1,5 @@
+{
+    "description": "An RSA key is bound to one scheme when it is opened: rsaScheme 'pkcs1' (what nearly every RSA certificate signs with). Summary verdict only.",
+    "tool": "open_pkcs12",
+    "arguments": { "pkcs12": { "path": "fixtures/rsa.p12" }, "password": "test-only-password", "rsaScheme": "pkcs1", "verbosity": "summary" }
+}
