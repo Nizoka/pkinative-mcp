@@ -3,9 +3,9 @@
  *
  * The Zod `InputSchema` consts are module-private by design (the advertised
  * `<NAME>_INPUT_SCHEMA` is the contract, the Zod twin is the gate), so this
- * suite extracts every tool module's top-level `const` statements verbatim
- * (TS type-only syntax stripped), rewrites the relative imports to `dist/`,
- * runs the result as an ESM program and converts the Zod schema with
+ * suite transpiles every tool module with the TypeScript compiler API
+ * (no bundler, no heuristics), rewrites its relative imports to `dist/`,
+ * exposes the module-private `InputSchema` and runs the result as an ESM program and converts the Zod schema with
  * `z.toJSONSchema({ io: 'input', unrepresentable: 'any' })`. The output is
  * compared structurally with the hand-written schema `tools/list` advertises:
  * property sets, `required`, `type`, `enum`, `default`, numeric and length
@@ -20,6 +20,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 import { listToolsPayload } from '../src/server.js';
@@ -28,11 +29,44 @@ import { hasDist, inCi } from './_agent-client.js';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TOOLS_DIR = path.join(ROOT, 'src', 'tools');
 
+const SPEC_PARSER = 'The spec object is documented in JSON Schema for the agent, but validated by the hand-written spec parser (JSON-path VALIDATION_ERROR per member, recursion the schema cannot express without $ref): the Zod twin is a loose object that only pins the discriminating member.';
+
 /**
  * Justified asymmetries, keyed `<tool>` → `<path> [<kind>]` → reason. Anything
  * not listed here is a lock-step defect.
  */
-const ALLOW_LIST: Readonly<Record<string, Readonly<Record<string, string>>>> = {};
+const ALLOW_LIST: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+    create_certificate: {
+        'create_certificate.spec [additionalProperties]': SPEC_PARSER,
+        'create_certificate.spec.serialNumber [property]': SPEC_PARSER,
+        'create_certificate.spec.issuer [property]': SPEC_PARSER,
+        'create_certificate.spec.notBefore [property]': SPEC_PARSER,
+        'create_certificate.spec.notAfter [property]': SPEC_PARSER,
+        'create_certificate.spec.validityDays [property]': SPEC_PARSER,
+        'create_certificate.spec.extensions [property]': SPEC_PARSER,
+        'create_certificate.spec.subject [union]': SPEC_PARSER,
+    },
+    create_csr: {
+        'create_csr.spec [additionalProperties]': SPEC_PARSER,
+        'create_csr.spec.extensions [property]': SPEC_PARSER,
+        'create_csr.spec.subject [union]': SPEC_PARSER,
+    },
+    encode_asn1: {
+        'encode_asn1.spec [additionalProperties]': SPEC_PARSER,
+        'encode_asn1.spec.value [property]': SPEC_PARSER,
+        'encode_asn1.spec.hex [property]': SPEC_PARSER,
+        'encode_asn1.spec.unusedBits [property]': SPEC_PARSER,
+        'encode_asn1.spec.bits [property]': SPEC_PARSER,
+        'encode_asn1.spec.stringType [property]': SPEC_PARSER,
+        'encode_asn1.spec.timeType [property]': SPEC_PARSER,
+        'encode_asn1.spec.children [property]': SPEC_PARSER,
+        'encode_asn1.spec.tag [property]': SPEC_PARSER,
+        'encode_asn1.spec.class [property]': SPEC_PARSER,
+        'encode_asn1.spec.constructed [property]': SPEC_PARSER,
+        'encode_asn1.spec.inner [property]': SPEC_PARSER,
+        'encode_asn1.spec.type [enum]': SPEC_PARSER,
+    },
+};
 
 /**
  * Representation differences that are NOT drift and are normalised before
@@ -56,53 +90,25 @@ function normalise(node: Node): void {
 
 interface Diff { at: string; kind: string; hand: unknown; zod: unknown }
 
-function extractTopLevelConsts(text: string): string[] {
-    const lines = text.split(/\r?\n/);
-    const out: string[] = [];
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i]!;
-        if (!/^const\s+[A-Za-z_{]/.test(line)) continue;
-        if (/;\s*$/.test(line)) {
-            out.push(line);
-            continue;
-        }
-        const block = [line];
-        for (let j = i + 1; j < lines.length; j++) {
-            const l = lines[j]!;
-            block.push(l);
-            const indent = l.length - l.trimStart().length;
-            const t = l.trim();
-            if (indent <= 4 && /;$/.test(t) && /^[)}.\]]/.test(t)) {
-                i = j;
-                break;
-            }
-        }
-        out.push(block.join('\n'));
-    }
-    return out;
-}
-
-function rewriteImports(text: string): string {
-    const imports: string[] = [];
-    for (const m of text.matchAll(/^import\s+(type\s+)?\{([^}]*)\}\s+from\s+'([^']+)';/gm)) {
-        if (m[1] !== undefined) continue;
-        const names = m[2]!.split(',').map((s) => s.trim()).filter((s) => s.length > 0 && !s.startsWith('type '));
-        if (names.length === 0) continue;
-        let from = m[3]!;
-        if (from.startsWith('../')) from = `./dist/${from.slice(3)}`;
-        else if (from.startsWith('./')) from = `./dist/tools/${from.slice(2)}`;
-        imports.push(`import { ${names.join(', ')} } from '${from}';`);
-    }
-    return imports.join('\n');
-}
-
-function stripTs(stmt: string): string {
-    return stmt
-        .replace(/\s+as\s+const/g, '')
-        .replace(/\s+satisfies\s+[^;]+;/g, ';')
-        .replace(/new\s+(Set|Map|Array)<[^>]+>\(/g, 'new $1(')
-        .replace(/\bas\s+(string|number|boolean|unknown|readonly\s+string\[\])\b/g, '')
-        .replace(/^const\s+([A-Z_a-z0-9]+)\s*:\s*[^=]+=/m, 'const $1 =');
+/**
+ * The tool module as an ESM program that prints `z.toJSONSchema(InputSchema)`:
+ * transpiled by the TypeScript compiler (types erased, nothing else changed),
+ * relative imports pointed at `dist/`, the private `InputSchema` appended.
+ */
+function programOf(text: string): string {
+    const js = ts.transpileModule(text, {
+        compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, verbatimModuleSyntax: true },
+        reportDiagnostics: false,
+    }).outputText;
+    const rewritten = js.replace(/from\s+'(\.\.?\/[^']+)'/g, (_m, from: string) => {
+        if (from.startsWith('../')) return `from './dist/${from.slice(3)}'`;
+        return `from './dist/tools/${from.slice(2)}'`;
+    });
+    return [
+        rewritten,
+        /from 'zod'/.test(rewritten) ? '' : "import { z } from 'zod';",
+        "process.stdout.write(JSON.stringify(z.toJSONSchema(InputSchema, { io: 'input', unrepresentable: 'any' })));",
+    ].join('\n');
 }
 
 const KEYS = ['type', 'enum', 'const', 'default', 'minimum', 'maximum', 'minLength', 'maxLength', 'minItems', 'maxItems', 'pattern', 'additionalProperties', 'format'] as const;
@@ -150,14 +156,7 @@ function compare(h: Node | undefined, z: Node | undefined, at: string, diffs: Di
 function zodSchemaOf(file: string): { tool: string; schema?: Node; error?: string } {
     const text = readFileSync(path.join(TOOLS_DIR, file), 'utf8');
     const toolName = /export const [A-Z0-9_]+_NAME = '([a-z0-9_]+)';/.exec(text)?.[1] ?? file;
-    const imports = rewriteImports(text);
-    const program = [
-        imports,
-        /from 'zod'/.test(imports) ? '' : "import { z } from 'zod';",
-        ...extractTopLevelConsts(text).map(stripTs),
-        "const schema = z.toJSONSchema(InputSchema, { io: 'input', unrepresentable: 'any' });",
-        'process.stdout.write(JSON.stringify(schema));',
-    ].join('\n');
+    const program = programOf(text);
     const run = spawnSync(process.execPath, ['--input-type=module'], { cwd: ROOT, input: program, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
     if (run.status !== 0) return { tool: toolName, error: run.stderr.slice(0, 2000) };
     const schema = JSON.parse(run.stdout) as Node;
@@ -216,7 +215,7 @@ describe('A-017: the artefact producers share one Zod output fragment and every 
         for (const file of files) {
             const text = readFileSync(path.join(TOOLS_DIR, file), 'utf8');
             expect(text, file).toMatch(/parseInput\(InputSchema, rawInput\)/);
-            expect(text, file).not.toMatch(/InputSchema\.safeParse\(/);
+            expect(text, file).not.toMatch(/\bInputSchema\.safeParse\(/);
         }
     });
 

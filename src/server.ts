@@ -354,9 +354,10 @@ const SERVER_INSTRUCTIONS = `pkinative-mcp: ${TOOLS.length} tools over the pkina
 DECISION TREE:
   • What is this object? → convert_pem (labels of a PEM text) then inspect_certificate / inspect_csr / inspect_crl / inspect_ocsp_response / inspect_cms / inspect_timestamp / inspect_private_key / inspect_pkcs12 (facts + diagnostics; verbosity:'summary' for the scalars)
   • Is this certificate trustworthy? → verify_certificate_chain (RFC 5280 §6 verdict: path, signatures, validity at 'at', name, purposes, policies, offline CRL / OCSP revocation) — NOT inspect_certificate.signature
+  • Does the name / purpose fit? → check_certificate_name (host name vs SAN, RFC 6125) / check_certificate_purpose (extended key usage) — both run inside verify_certificate_chain when serverName / purposes are given
   • Why did a path fail / which path? → build_certificate_path (discovery, signatures NOT checked) / validate_certificate_path (a path you ordered, signatures checked)
   • Is it revoked? → check_crl_revocation / check_ocsp_status with the bytes YOU fetched (create_ocsp_request builds the request); the engine never fetches
-  • Is this signature good? → verify_cms (the verdict: signatures, chains, time-stamps, revocation) vs inspect_cms (facts; signerSignature is a key check, not trust)
+  • Sign / is this signature good? → sign_cms (CMS SignedData, attached or detached) · verify_cms (the verdict: signatures, chains, time-stamps, revocation) vs inspect_cms (facts; signerSignature is a key check, not trust)
   • Time-stamps → create_timestamp_request / inspect_timestamp / verify_timestamp; counter-stamp a CMS signer with amend_cms add-timestamp
   • Issue / request → create_csr / create_certificate (keys come from you; nothing generates or exports a key here)
   • Keys → inspect_private_key / inspect_pkcs12 (no password needed) / open_pkcs12 (password; key handles described, never exported)
