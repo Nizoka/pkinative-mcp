@@ -34,7 +34,7 @@ describe('limits', () => {
         expect(new Set(LIMIT_KEYS).size).toBe(22);
     });
 
-    it('LIMITS_INPUT_SCHEMA: a closed object whose every key is an integer ≥ 1 described with the engine default and a CWE', () => {
+    it('LIMITS_INPUT_SCHEMA: a closed object whose every key is an integer ≥ 1 described with the engine default', () => {
         expect(LIMITS_INPUT_SCHEMA.type).toBe('object');
         expect(LIMITS_INPUT_SCHEMA.additionalProperties).toBe(false);
         expect(Object.keys(LIMITS_INPUT_SCHEMA.properties)).toEqual([...LIMIT_KEYS]);
@@ -42,8 +42,7 @@ describe('limits', () => {
             const property = LIMITS_INPUT_SCHEMA.properties[key];
             expect(property.type, key).toBe('integer');
             expect(property.minimum, key).toBe(1);
-            expect(property.description, key).toContain(`Engine default ${DEFAULT_PKI_LIMITS[key]}`);
-            expect(property.description, key).toMatch(/\(CWE-\d+\)\.$/);
+            expect(property.description, key).toMatch(new RegExp(`\\. Default ${DEFAULT_PKI_LIMITS[key]}\\.$`));
         }
         for (const env of ENV) expect(LIMITS_INPUT_SCHEMA.description).toContain(env);
         expect(LIMITS_INPUT_SCHEMA.description).toContain('LIMIT_CEILING_EXCEEDED');

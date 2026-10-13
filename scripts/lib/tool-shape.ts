@@ -64,9 +64,13 @@ export function serializeShape(tools: readonly ListedTool[]): string {
  * with each fragment. A host forwards it to the model on every session, so
  * the growth is budgeted here and the measured figure is held to the
  * manifest (`declared.toolsListBytes`) so the documents quote a number
- * `--check` has seen.
+ * `--check` has seen. 448 KiB for this 34-tool catalogue (pdfnative-mcp
+ * budgets 320 KiB for 20 tools): the 22 named limits and the parse fragment
+ * ride on 31 tools, the PKI input on 70 properties — their descriptions are
+ * kept terse on purpose, the long form living in describe_engine and the
+ * agent contract.
  */
-export const TOOLS_LIST_BUDGET_BYTES = 320 * 1024;
+export const TOOLS_LIST_BUDGET_BYTES = 448 * 1024;
 export const INSTRUCTIONS_BUDGET_BYTES = 8 * 1024;
 /** `declared.toolsListBytes` may drift this far from the measurement before the manifest must move. */
 export const TOOLS_LIST_TOLERANCE = 0.02;

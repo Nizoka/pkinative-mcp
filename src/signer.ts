@@ -98,7 +98,7 @@ export const ALLOW_SHA1_INPUT_PROPERTY = {
     allowSha1: {
         type: 'boolean',
         default: false,
-        description: 'Accept or produce SHA-1 signatures (legacy material you already trust only). Default false: a SHA-1 signature is refused with PKI_CRYPTO_ALGORITHM_REFUSED on read, and at the boundary on write.',
+        description: 'Accept or produce SHA-1 signatures (legacy material you already trust). Default false: refused with PKI_CRYPTO_ALGORITHM_REFUSED on read, VALIDATION_ERROR on write.',
     },
 } as const;
 

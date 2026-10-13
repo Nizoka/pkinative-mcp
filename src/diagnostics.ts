@@ -91,7 +91,7 @@ export const DIAGNOSTICS_OUTPUT_PROPERTIES = {
     diagnostics: {
         type: 'array',
         description:
-            'Non-fatal profile concerns the engine raised while parsing or building (de-duplicated by code + path, at most 200). Empty for a clean object. The 97 PKI_DIAG_* codes are listed by describe_engine and explained by explain_code.',
+            'Non-fatal concerns the engine raised (PKI_DIAG_*, de-duplicated, at most 200; explain_code explains one).',
         items: {
             type: 'object',
             additionalProperties: false,
@@ -108,8 +108,8 @@ export const DIAGNOSTICS_OUTPUT_PROPERTIES = {
     },
     diagnosticCounts: {
         type: 'object',
-        description: 'Number of diagnostics received per code (counts every occurrence, including de-duplicated ones).',
+        description: 'Occurrences per diagnostic code.',
         additionalProperties: { type: 'integer', minimum: 0 },
     },
-    diagnosticsTruncated: { type: 'boolean', description: 'Present (true) when more than 200 distinct diagnostics were dropped from `diagnostics`.' },
+    diagnosticsTruncated: { type: 'boolean', description: 'true when distinct diagnostics beyond the 200 listed were dropped.' },
 } as const;

@@ -90,7 +90,8 @@ describe('createDiagnosticSink', () => {
         expect(Object.keys(DIAGNOSTICS_OUTPUT_PROPERTIES.diagnostics.items.properties)).toEqual(['code', 'severity', 'message', 'standard', 'path', 'offset']);
         expect(DIAGNOSTICS_OUTPUT_PROPERTIES.diagnostics.items.additionalProperties).toBe(false);
         expect(DIAGNOSTICS_OUTPUT_PROPERTIES.diagnostics.items.properties.severity.enum).toEqual(['warning', 'info']);
-        expect(DIAGNOSTICS_OUTPUT_PROPERTIES.diagnostics.description).toContain(`${PKI_DIAGNOSTIC_CODES.length} PKI_DIAG_* codes`);
+        expect(DIAGNOSTICS_OUTPUT_PROPERTIES.diagnostics.description).toContain('PKI_DIAG_*');
+        expect(PKI_DIAGNOSTIC_CODES).toHaveLength(97);
         expect(DIAGNOSTICS_OUTPUT_PROPERTIES.diagnostics.description).toContain(`at most ${MAX_DIAGNOSTICS}`);
         expect(DIAGNOSTICS_OUTPUT_PROPERTIES.diagnosticCounts.additionalProperties).toEqual({ type: 'integer', minimum: 0 });
         expect(DIAGNOSTICS_OUTPUT_PROPERTIES.diagnosticsTruncated.description).toContain(String(MAX_DIAGNOSTICS));

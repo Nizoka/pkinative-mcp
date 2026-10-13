@@ -53,9 +53,9 @@ export function pkiInputSchema(what: string, extra = ''): Record<string, unknown
         additionalProperties: false,
         description: `${what}: exactly one of pem / derBase64 / path.${extra}`,
         properties: {
-            pem: { type: 'string', minLength: 20, description: `${what} as RFC 7468 PEM text (must start with -----BEGIN; a bundle may hold several blocks where a list is expected). Exclusive with derBase64 / path.` },
-            derBase64: { type: 'string', minLength: 4, description: `${what} as DER bytes in base64 (exactly once; a data: URI prefix is tolerated; PEM text belongs in \`pem\`). Exclusive with pem / path.` },
-            path: { type: 'string', minLength: 1, description: `Relative path of a PEM or DER file inside the PKINATIVE_MCP_OUTPUT_DIR sandbox (no absolute paths, no '..'; extensions: ${PKI_INPUT_EXTENSIONS.join(' ')}). Exclusive with pem / derBase64. A path is a reference, never cached.` },
+            pem: { type: 'string', minLength: 20, description: 'RFC 7468 PEM text (starts with -----BEGIN).' },
+            derBase64: { type: 'string', minLength: 4, description: 'DER bytes as base64, exactly once (not PEM text).' },
+            path: { type: 'string', minLength: 1, description: 'Relative path of a PEM / DER file inside the PKINATIVE_MCP_OUTPUT_DIR sandbox (never cached).' },
         },
     };
 }

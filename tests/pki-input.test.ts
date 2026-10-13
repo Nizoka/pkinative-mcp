@@ -68,7 +68,7 @@ describe('looksLikePem', () => {
 });
 
 describe('schemas', () => {
-    it('pkiInputSchema is a closed object with the three exclusive members and the sandbox extensions', () => {
+    it('pkiInputSchema is a closed object with the three exclusive members (terse: it rides on 70 properties of the catalogue)', () => {
         const schema = pkiInputSchema('The certificate', ' Extra.');
         expect(schema).toMatchObject({ type: 'object', additionalProperties: false, description: 'The certificate: exactly one of pem / derBase64 / path. Extra.' });
         const properties = schema['properties'] as Record<string, Record<string, unknown>>;
@@ -76,8 +76,9 @@ describe('schemas', () => {
         expect(properties['pem']).toMatchObject({ type: 'string', minLength: 20 });
         expect(properties['derBase64']).toMatchObject({ type: 'string', minLength: 4 });
         expect(properties['path']).toMatchObject({ type: 'string', minLength: 1 });
-        expect(properties['path']?.['description']).toContain(PKI_INPUT_EXTENSIONS.join(' '));
-        expect(properties['pem']?.['description']).toContain('The certificate');
+        expect(properties['path']?.['description']).toContain('PKINATIVE_MCP_OUTPUT_DIR');
+        expect(properties['pem']?.['description']).toContain('RFC 7468');
+        expect(properties['derBase64']?.['description']).toContain('exactly once');
     });
 
     it('pkiBundleSchema wraps it in a bounded array', () => {

@@ -55,18 +55,18 @@ export const PARSE_INPUT_PROPERTIES = {
         type: 'string',
         enum: ['der', 'ber'],
         default: 'der',
-        description: "ASN.1 encoding rules accepted: 'der' (default, strict X.690 DER) or 'ber' (also indefinite lengths, non-minimal lengths, constructed strings — common in CMS from legacy producers).",
+        description: "'der' (strict X.690 DER, default) or 'ber' (indefinite / non-minimal lengths and constructed strings, as legacy CMS producers write).",
     },
     pemMode: {
         type: 'string',
         enum: ['strict', 'lax'],
         default: 'strict',
-        description: "PEM reading discipline: 'strict' (RFC 7468 exactly) or 'lax' (tolerates whitespace, line length and RFC 1421 headers; a missing base64 padding is refused in both modes).",
+        description: "'strict' (RFC 7468 exactly, default) or 'lax' (tolerates whitespace, line length and RFC 1421 headers).",
     },
     strict: {
         type: 'boolean',
         default: false,
-        description: 'Escalate the first engine warning diagnostic (a long serial, an explicit DEFAULT, a missing key identifier, …) to a PKI_STRICT_DIAGNOSTIC error instead of reporting it in diagnostics[].',
+        description: 'Escalate the first engine warning to a PKI_STRICT_DIAGNOSTIC error instead of listing it in diagnostics[].',
     },
     limits: LIMITS_INPUT_SCHEMA,
 } as const;
