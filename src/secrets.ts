@@ -72,11 +72,15 @@ export function redact(text: string, secrets: readonly (string | undefined)[]): 
     return out;
 }
 
-/** True when a raw input object carries a `password` anywhere (top level or inside `signer`). */
+/**
+ * True when a raw input object carries a secret: a `password` (top level or
+ * inside `signer`), or a `signer` at all — a plain PKCS#8 key given inline is
+ * a secret even without a password, and such a call must never reach the cache.
+ */
 export function carriesSecret(input: unknown): boolean {
     if (input === null || typeof input !== 'object') return false;
     const o = input as Record<string, unknown>;
     if (typeof o['password'] === 'string') return true;
     const signer = o['signer'];
-    return signer !== null && typeof signer === 'object' && typeof (signer as Record<string, unknown>)['password'] === 'string';
+    return signer !== null && typeof signer === 'object';
 }

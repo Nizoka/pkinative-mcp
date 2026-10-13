@@ -37,9 +37,9 @@ export const TRUST_INPUT_PROPERTIES = {
         description: 'RFC 5280 §6.1.1 policy inputs.',
         properties: {
             initialPolicySet: { type: 'array', maxItems: 64, items: { type: 'string', pattern: '^\\d+(\\.\\d+)+$' }, description: 'user-initial-policy-set (dotted OIDs); absent = any-policy.' },
-            requireExplicitPolicy: { type: 'boolean', default: false },
-            inhibitPolicyMapping: { type: 'boolean', default: false },
-            inhibitAnyPolicy: { type: 'boolean', default: false },
+            requireExplicitPolicy: { type: 'boolean', default: false, description: 'initial-explicit-policy: every certificate must carry an acceptable policy.' },
+            inhibitPolicyMapping: { type: 'boolean', default: false, description: 'initial-policy-mapping-inhibit: policy mappings are refused.' },
+            inhibitAnyPolicy: { type: 'boolean', default: false, description: 'initial-any-policy-inhibit: anyPolicy is not a match.' },
         },
     },
 } as const;

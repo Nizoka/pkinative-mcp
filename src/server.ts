@@ -30,7 +30,7 @@ import type { OutputResult } from './output.js';
 import { isPathInput } from './pki-input.js';
 import { readFields, readVerbosity, selectFields } from './projection.js';
 import { listResources, listResourceTemplates, readResource, resourceLinkForPath } from './resources.js';
-import { carriesSecret } from './secrets.js';
+import { carriesSecret, PASSWORD_ENV } from './secrets.js';
 import { isClockDependent } from './time.js';
 import { PKINATIVE_MCP_VERSION, TOOL_API_VERSION } from './version.js';
 import type { ToolDefinition } from './tools/_definition.js';
@@ -95,6 +95,13 @@ function hasVolatileValue(input: unknown, depth = 0): boolean {
     return false;
 }
 
+/** True when the tool's input schema accepts a password (top level or inside `signer`). */
+function acceptsPassword(tool: ToolDefinition): boolean {
+    const props = (tool.inputSchema['properties'] ?? {}) as Record<string, unknown>;
+    if ('password' in props || 'signer' in props) return true;
+    return Object.values(props).some((p) => p !== null && typeof p === 'object' && 'password' in (((p as Record<string, unknown>)['properties'] ?? {}) as Record<string, unknown>));
+}
+
 function readPath(input: unknown, dotted: string): unknown {
     let cur: unknown = input;
     for (const seg of dotted.split('.')) {
@@ -112,6 +119,9 @@ function readPath(input: unknown, dotted: string): unknown {
  */
 export function isCacheable(tool: ToolDefinition, input: unknown): boolean {
     if (!tool.cacheable || isFileOutput(input) || isPathInput(input) || carriesSecret(input) || hasVolatileValue(input)) return false;
+    // A tool that can take the operator password (PKINATIVE_MCP_PASSWORD) may have
+    // used it without any secret in the input: never cache such a call while it is set.
+    if (acceptsPassword(tool) && (process.env[PASSWORD_ENV] ?? '') !== '') return false;
     for (const field of tool.instantInputs ?? []) {
         const raw = readPath(input, field);
         if (raw !== undefined && typeof raw !== 'string' && typeof raw !== 'number') return false;
@@ -190,9 +200,11 @@ function projected(text: string, full: Record<string, unknown>, summary: Record<
 
 function buildArtefactResult(output: Record<string, unknown>, tool: ToolDefinition): CallToolResult {
     const artefact = output as unknown as OutputResult & Record<string, unknown>;
-    const { base64: _b, hex: _h, ...rest } = artefact;
+    // The bytes and the MIME type travel in the content block, never in structuredContent.
+    const { base64: _b, hex: _h, mimeType: _m, ...rest } = artefact;
     void _b;
     void _h;
+    void _m;
     const structured = { ...rest, ...artefactStructured(artefact) };
     return {
         content: [{ type: 'text', text: tool.text(output) }, ...artefactBlocks(artefact)],

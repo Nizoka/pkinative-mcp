@@ -105,6 +105,6 @@ export const NAME_SPEC_SCHEMA = {
     description: 'A distinguished name, most significant RDN first: { "C": "FR", "O": "Acme", "CN": "example.test" } (one attribute per RDN; keys are RFC 4514 short names, registry names or dotted OIDs), or an array of RDNs [[{ "type", "value", "stringType"? }], …].',
     anyOf: [
         { type: 'object', minProperties: 1, additionalProperties: { type: 'string' } },
-        { type: 'array', minItems: 1, items: { type: 'array', minItems: 1, items: { type: 'object', additionalProperties: false, required: ['type', 'value'], properties: { type: { type: 'string' }, value: { type: 'string' }, stringType: { type: 'string', enum: ['utf8', 'printable', 'ia5', 'numeric'] } } } } },
+        { type: 'array', minItems: 1, items: { type: 'array', minItems: 1, items: { type: 'object', additionalProperties: false, required: ['type', 'value'], properties: { type: { type: 'string', description: 'Attribute type: an RFC 4514 short name (CN, O, OU, C, …), a registry name or a dotted OID.' }, value: { type: 'string', description: 'The attribute value.' }, stringType: { type: 'string', enum: ['utf8', 'printable', 'ia5', 'numeric'], description: 'The ASN.1 string type to write (default: the RFC 5280 type for the attribute).' } } } } },
     ],
 } as const;
