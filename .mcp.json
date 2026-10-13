@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "zipnative": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["${CLAUDE_PROJECT_DIR}/dist/cli.js"],
+      "env": {
+        "PKINATIVE_MCP_OUTPUT_DIR": "${CLAUDE_PROJECT_DIR}/test-output/mcp-sandbox"
+      }
+    }
+  }
+}
