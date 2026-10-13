@@ -17,7 +17,7 @@ import { cleanupSandbox, makeSandbox } from './_sandbox.js';
 const CONTENT_SHA256 = 'b1a1c762480b580288e0737422f01130e824c8014422371ae571880dfc642533';
 /** TimeStampResp { status { rejection (2) } } */
 const REJECTION = { derBase64: Buffer.from('30053003020102', 'hex').toString('base64') };
-const TST_INFO = { derBase64: Buffer.from(parseTimeStampToken(fixtureBytes('content.tst')).tstInfo.der).toString('base64') };
+const TST_INFO = { derBase64: Buffer.from(parseTimeStampToken(fixtureBytes('content.tst'), { onDiagnostic: () => undefined }).tstInfo.der).toString('base64') };
 
 const EXPECTED_TST_INFO = {
     version: 1,
