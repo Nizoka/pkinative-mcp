@@ -1,0 +1,11 @@
+{
+    "description": "The delta CRL pair of the Ed25519 CA applied over its base (number 1 → delta 2), both signatures verified against the CA: the CA's own certificate is not listed (valid:true).",
+    "tool": "check_crl_revocation",
+    "arguments": {
+        "certificate": { "path": "fixtures/ed25519.crt.pem" },
+        "crl": { "path": "fixtures/ed25519.crl.der" },
+        "delta": { "path": "fixtures/ed25519-delta.crl.der" },
+        "issuer": { "path": "fixtures/ed25519.crt.pem" },
+        "at": "2027-01-01T00:00:00Z"
+    }
+}

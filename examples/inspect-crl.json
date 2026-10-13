@@ -1,0 +1,21 @@
+{
+    "description": "The RFC 5280 §5 report of the intermediate's CRL with its signature checked against the issuer, then one lookup: the revoked certificate is listed (keyCompromise, 2026-06-01).",
+    "steps": [
+        {
+            "tool": "inspect_crl",
+            "arguments": {
+                "crl": { "path": "fixtures/inter.crl.pem" },
+                "issuer": { "path": "fixtures/inter.crt.pem" },
+                "verbosity": "summary"
+            }
+        },
+        {
+            "tool": "inspect_crl",
+            "arguments": {
+                "crl": { "path": "fixtures/inter.crl.der" },
+                "find": { "certificate": { "path": "fixtures/revoked.crt.pem" } },
+                "fields": ["entry", "issuerString", "crlNumber", "nextUpdate.iso"]
+            }
+        }
+    ]
+}

@@ -1,0 +1,25 @@
+{
+    "description": "Two verdicts against the signature-verified intermediate CRL at a pinned instant: the leaf is not revoked (valid:true), the revoked leaf is PKI_REASON_REVOKED — a verdict, never isError.",
+    "steps": [
+        {
+            "tool": "check_crl_revocation",
+            "arguments": {
+                "certificate": { "path": "fixtures/leaf.crt.pem" },
+                "crl": { "path": "fixtures/inter.crl.pem" },
+                "issuer": { "path": "fixtures/inter.crt.pem" },
+                "at": "2027-01-01T00:00:00Z",
+                "verbosity": "summary"
+            }
+        },
+        {
+            "tool": "check_crl_revocation",
+            "arguments": {
+                "certificate": { "path": "fixtures/revoked.crt.pem" },
+                "crl": { "path": "fixtures/inter.crl.der" },
+                "issuer": { "path": "fixtures/inter.crt.pem" },
+                "at": "2027-01-01T00:00:00Z",
+                "fields": ["valid", "reasons.code", "signatureVerified", "crlNumber"]
+            }
+        }
+    ]
+}

@@ -1,0 +1,28 @@
+{
+    "description": "Two OCSP verdicts at a pinned instant: the leaf is good (the embedded delegated responder, issued by the intermediate with id-kp-OCSPSigning, is authorised; the request nonce is echoed), the revoked leaf is PKI_REASON_REVOKED with status revoked — a verdict, never isError.",
+    "steps": [
+        {
+            "tool": "check_ocsp_status",
+            "arguments": {
+                "response": { "path": "fixtures/leaf.ocsp.der" },
+                "certificate": { "path": "fixtures/leaf.crt.pem" },
+                "issuer": { "path": "fixtures/inter.crt.pem" },
+                "nonce": "1538349c433373ed058c291909df5b3e",
+                "requireNonce": true,
+                "at": "2027-01-01T00:00:00Z",
+                "verbosity": "summary"
+            }
+        },
+        {
+            "tool": "check_ocsp_status",
+            "arguments": {
+                "response": { "path": "fixtures/revoked.ocsp.der" },
+                "certificate": { "path": "fixtures/revoked.crt.pem" },
+                "issuer": { "path": "fixtures/inter.crt.pem" },
+                "responder": { "path": "fixtures/ocsp.crt.pem" },
+                "at": "2027-01-01T00:00:00Z",
+                "fields": ["valid", "reasons.code", "status", "signatureVerified", "responderAuthorized", "responderSource"]
+            }
+        }
+    ]
+}
