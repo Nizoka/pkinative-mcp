@@ -1,0 +1,146 @@
+{
+    "name": "pkinative-mcp",
+    "version": "1.0.0",
+    "description": "Model Context Protocol (MCP) server for PKI: inspect and verify X.509 certificates, CSRs, CRLs, OCSP responses, CMS SignedData and RFC 3161 timestamps; build and validate certificate chains (RFC 5280 path validation, name and purpose checks, CRL and OCSP revocation); create certificates, CSRs, CMS signatures, OCSP and timestamp requests; open PKCS#8 and PKCS#12 without ever returning a key byte; decode ASN.1, PEM and OIDs. 34 tools on the pkinative engine, OpenSSL interoperability validated in CI, no network ever, for Claude, Cursor, ChatGPT and any MCP client.",
+    "mcpName": "io.github.Nizoka/pkinative-mcp",
+    "keywords": [
+        "mcp",
+        "mcp-server",
+        "model-context-protocol",
+        "modelcontextprotocol",
+        "mcp-registry",
+        "pki",
+        "x509",
+        "x.509",
+        "certificate",
+        "csr",
+        "pkcs10",
+        "crl",
+        "ocsp",
+        "revocation",
+        "cms",
+        "pkcs7",
+        "signed-data",
+        "rfc3161",
+        "timestamp",
+        "tsp",
+        "pkcs8",
+        "pkcs12",
+        "asn1",
+        "der",
+        "pem",
+        "oid",
+        "rfc5280",
+        "chain-validation",
+        "path-validation",
+        "certificate-verification",
+        "fingerprint",
+        "pkinative",
+        "zero-dependency",
+        "typescript",
+        "offline",
+        "secure-by-default",
+        "openssl-interop",
+        "conformance",
+        "ecdsa",
+        "ed25519",
+        "rsa-pss",
+        "web-crypto",
+        "ai-governance",
+        "human-in-the-loop",
+        "claude",
+        "claude-desktop",
+        "cursor",
+        "chatgpt",
+        "llm",
+        "agent-tools"
+    ],
+    "homepage": "https://github.com/Nizoka/pkinative-mcp#readme",
+    "bugs": {
+        "url": "https://github.com/Nizoka/pkinative-mcp/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Nizoka/pkinative-mcp.git"
+    },
+    "license": "MIT",
+    "author": "Nizoka",
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        }
+    },
+    "bin": {
+        "pkinative-mcp": "./dist/cli.js"
+    },
+    "files": [
+        "dist/",
+        "LICENSE",
+        "THIRD-PARTY-NOTICES.md",
+        "README.md",
+        "CHANGELOG.md",
+        "server.json",
+        "llms.txt"
+    ],
+    "engines": {
+        "node": ">=22"
+    },
+    "sideEffects": false,
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "dev": "tsc -p tsconfig.build.json --watch",
+        "clean": "node -e \"import('node:fs').then(m=>m.rmSync('dist',{recursive:true,force:true}))\"",
+        "lint": "eslint src --max-warnings 0",
+        "typecheck": "tsc --noEmit",
+        "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json",
+        "typecheck:all": "npm run typecheck && npm run typecheck:scripts",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:coverage": "vitest run --coverage",
+        "test:generate": "npx tsx scripts/generate-samples.ts",
+        "test:interop": "vitest run tests/interop/openssl.test.ts",
+        "test:lint-certs": "vitest run tests/interop/lint.test.ts",
+        "examples:check": "vitest run tests/examples.test.ts",
+        "gate": "npx tsx scripts/gate.ts",
+        "gate:fast": "npx tsx scripts/gate.ts --fast",
+        "verify:samples": "npx tsx scripts/verify-samples.ts",
+        "verify:docs": "npx tsx scripts/verify-docs.ts",
+        "verify:tool-shape": "npx tsx scripts/tool-shape.ts --check",
+        "verify:issue": "node scripts/verify-issue.mjs",
+        "corpus:pki": "npx tsx scripts/generate-pki-corpus.ts",
+        "validate:pki": "npx tsx scripts/validate-pki.ts",
+        "agents:rules": "npx tsx scripts/build-claude-rules.ts",
+        "release:prepare": "npx tsx scripts/release-prepare.ts",
+        "hooks:install": "node scripts/install-git-hooks.mjs",
+        "hooks:uninstall": "node scripts/install-git-hooks.mjs --uninstall",
+        "prepublishOnly": "npm run build"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/server": "^2.0.0",
+        "pkinative": "^1.0.0",
+        "zod": "^4.2.0"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.18.0",
+        "@types/node": "^22.10.5",
+        "@vitest/coverage-v8": "^4.1.11",
+        "eslint": "^9.18.0",
+        "tsx": "^4.22.4",
+        "typescript": "^5.7.3",
+        "typescript-eslint": "^8.20.0",
+        "vitest": "^4.1.11"
+    },
+    "packageManager": "npm@10.9.2",
+    "overrides": {
+        "esbuild": "0.28.2",
+        "js-yaml": "4.3.2"
+    },
+    "publishConfig": {
+        "access": "public",
+        "provenance": true
+    }
+}

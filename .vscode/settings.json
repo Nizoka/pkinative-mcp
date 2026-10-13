@@ -1,0 +1,15 @@
+{
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "terminal.integrated.profiles.windows": {
+        "PowerShell": {
+            "source": "PowerShell",
+            "args": ["-NoLogo", "-NoProfile"]
+        }
+    },
+    "terminal.integrated.gpuAcceleration": "off",
+    "terminal.integrated.scrollback": 500,
+    "terminal.integrated.env.windows": {
+        "NO_COLOR": "1",
+        "FORCE_COLOR": "0"
+    }
+}

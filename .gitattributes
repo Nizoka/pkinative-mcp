@@ -1,0 +1,32 @@
+# Binary fixtures must never go through EOL conversion. With core.autocrlf=true
+# (a common system-level default on Windows) a DER certificate or a PKCS#12
+# file that happens to contain 0x0A bytes would be rewritten at checkout and
+# every SHA256SUMS pin would break while `git status` stayed clean.
+#
+# Text files are LF in the repository AND in every working copy (eol=lf), so a
+# Windows checkout produces the same bytes as CI and the sample baseline
+# (tests/_fixtures/samples.sha256.json) does not depend on the OS.
+* text=auto eol=lf
+
+*.der   binary
+*.p12   binary
+*.pfx   binary
+*.p7s   binary
+*.p7b   binary
+*.p7m   binary
+*.crl   binary
+*.tsq   binary
+*.tsr   binary
+*.tst   binary
+*.bin   binary
+*.png   binary
+
+# The OpenSSL-made PEM and text fixtures are pinned by checksum over their LF
+# bytes; the rule above keeps them LF on every host.
+
+# Generated files: collapsed in GitHub diffs and excluded from language stats.
+.claude/rules/*.md                      linguist-generated=true
+tests/_fixtures/samples.sha256.json     linguist-generated=true -diff
+tests/_fixtures/tool-shape.json         linguist-generated=true
+tests/_fixtures/tool-shape.v1.0.0.json  linguist-generated=true
+package-lock.json                       linguist-generated=true
