@@ -1,0 +1,14 @@
+{
+    "description": "Draft an engine bug report for the pkinative repository: a local Markdown draft with its compliance report, never submitted — the user reviews and files it under their own identity.",
+    "tool": "draft_governance_issue",
+    "arguments": {
+        "title": "parseCertificateList refuses a delta CRL with an empty revokedCertificates list",
+        "summary": "A delta CRL (deltaCRLIndicator present) whose revokedCertificates SEQUENCE is absent is refused with PKI_X509_STRUCTURE_INVALID although RFC 5280 makes the field OPTIONAL.",
+        "issueType": "bug",
+        "targetRepo": "pkinative",
+        "reproduction": { "command": "inspect_crl { crl: { path: \"fixtures/empty-delta.crl\" } }", "result": "PKI_X509_STRUCTURE_INVALID at revokedCertificates" },
+        "expectedBehavior": "The delta CRL parses with entryCount 0.",
+        "affectedPackages": ["pkinative", "pkinative-mcp"],
+        "duplicateSearchPerformed": true
+    }
+}

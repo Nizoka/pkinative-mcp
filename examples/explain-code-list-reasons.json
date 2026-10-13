@@ -1,0 +1,5 @@
+{
+    "description": "Every PKI_REASON_* code a verdict can return, as a list projected to the codes and their count.",
+    "tool": "explain_code",
+    "arguments": { "list": true, "kind": "reason", "fields": ["codes.code", "count"] }
+}

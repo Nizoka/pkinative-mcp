@@ -1,0 +1,6 @@
+{
+    "description": "A private key given where a certificate is expected is refused by its PEM label before any byte is parsed (PKI_PEM_UNEXPECTED_LABEL) — and the refusal never echoes the key.",
+    "tool": "inspect_certificate",
+    "arguments": { "certificate": { "path": "fixtures/leaf.key.pem" } },
+    "expectError": "PKI_PEM_UNEXPECTED_LABEL"
+}

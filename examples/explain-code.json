@@ -1,0 +1,5 @@
+{
+    "description": "A code the agent does not understand, explained with its class, the standard it cites and the remedy — here the reason an RSA key of a PKCS#12 file was not imported.",
+    "tool": "explain_code",
+    "arguments": { "code": "PKI_REASON_PKCS12_RSA_SCHEME_UNSPECIFIED" }
+}

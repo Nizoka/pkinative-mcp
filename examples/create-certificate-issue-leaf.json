@@ -1,0 +1,30 @@
+{
+    "description": "Issue a TLS server certificate from a CSR with the test leaf as the issuing CA (its plain EC key signs): the public key comes from the request, the authorityKeyIdentifier from the issuer, the issuer signature is verified before the bytes are returned, then the chain leaf → issuer is validated structurally.",
+    "steps": [
+        {
+            "tool": "create_certificate",
+            "arguments": {
+                "spec": {
+                    "serialNumber": "0x1a2b3c",
+                    "subject": { "CN": "svc.example.test" },
+                    "notBefore": "2027-01-01T00:00:00Z",
+                    "validityDays": 90,
+                    "extensions": { "subjectAltName": { "dns": ["svc.example.test"] }, "extendedKeyUsage": ["serverAuth"], "keyUsage": ["digitalSignature"] }
+                },
+                "issuerCertificate": { "path": "fixtures/leaf.crt.pem" },
+                "subjectPublicKey": { "path": "fixtures/leaf.csr.pem" },
+                "signer": { "key": { "path": "fixtures/leaf.key.pem" } },
+                "encoding": "der"
+            }
+        },
+        {
+            "tool": "validate_certificate_path",
+            "arguments": {
+                "path": [{ "derBase64": "<base64 from step 1>" }],
+                "trustAnchors": [{ "path": "fixtures/leaf.crt.pem" }],
+                "at": "2027-06-01T00:00:00Z",
+                "verbosity": "summary"
+            }
+        }
+    ]
+}

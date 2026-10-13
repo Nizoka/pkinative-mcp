@@ -1,0 +1,13 @@
+{
+    "description": "Is this server certificate trustworthy for a.wild.example.test? The one-call RFC 5280 §6 verdict at a pinned instant: path to YOUR anchor, every signature, the host name (RFC 6125) and the serverAuth purpose — valid true, no reasons.",
+    "tool": "verify_certificate_chain",
+    "arguments": {
+        "leaf": { "path": "fixtures/leaf.crt.pem" },
+        "candidates": [{ "path": "fixtures/inter.crt.pem" }],
+        "trustAnchors": [{ "path": "fixtures/root.crt.pem" }],
+        "at": "2027-01-01T00:00:00Z",
+        "serverName": { "host": "a.wild.example.test" },
+        "purposes": ["serverAuth"],
+        "verbosity": "summary"
+    }
+}

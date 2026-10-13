@@ -1,0 +1,5 @@
+{
+    "description": "The offline preflight an agent runs first: versions, Web Crypto capabilities, the 22 default limits, the operator ceilings and caps, the sandbox state, the code vocabularies and the doctrine refusals — network is always 'none'.",
+    "tool": "describe_engine",
+    "arguments": { "verbosity": "summary" }
+}
