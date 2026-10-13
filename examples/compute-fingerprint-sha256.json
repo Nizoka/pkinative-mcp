@@ -1,0 +1,9 @@
+{
+    "description": "The SHA-256 fingerprint of the exact DER of a certificate, as openssl x509 -fingerprint -sha256 prints it.",
+    "tool": "compute_fingerprint",
+    "arguments": {
+        "input": {
+            "path": "fixtures/leaf.crt.pem"
+        }
+    }
+}

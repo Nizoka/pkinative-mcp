@@ -1,0 +1,14 @@
+{
+    "description": "Write one block of a PEM bundle to a sandbox DER file (never overwritten); the result carries a resource_link. Documentation only: file mode is not executed by the examples runner.",
+    "tool": "convert_pem",
+    "arguments": {
+        "mode": "decode",
+        "input": {
+            "path": "fixtures/leaf.crt.pem"
+        },
+        "extractIndex": 0,
+        "outputMode": "file",
+        "outputPath": "out/leaf.crt.der"
+    },
+    "documentationOnly": true
+}

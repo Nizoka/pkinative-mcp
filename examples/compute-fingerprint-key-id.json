@@ -1,0 +1,14 @@
+{
+    "description": "The RFC 5280 section 4.2.1.2 key identifier (SHA-1 of the public key bits) of the key inside a CSR: what the issued certificate subjectKeyIdentifier will carry.",
+    "tool": "compute_fingerprint",
+    "arguments": {
+        "input": {
+            "path": "fixtures/leaf.csr.pem"
+        },
+        "mode": "key-id",
+        "fields": [
+            "formatted",
+            "from"
+        ]
+    }
+}

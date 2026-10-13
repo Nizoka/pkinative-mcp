@@ -1,0 +1,12 @@
+{
+    "description": "A key identifier is SHA-1 or SHA-256 only: SHA-512 is refused before any input is read.",
+    "tool": "compute_fingerprint",
+    "arguments": {
+        "input": {
+            "path": "fixtures/leaf.crt.pem"
+        },
+        "mode": "key-id",
+        "algorithm": "SHA-512"
+    },
+    "expectError": "VALIDATION_ERROR"
+}

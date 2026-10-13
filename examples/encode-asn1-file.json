@@ -1,0 +1,22 @@
+{
+    "description": "Write an encoded value to a sandbox .asn1 file (never overwritten); the result carries a resource_link. Documentation only: file mode is not executed by the examples runner.",
+    "tool": "encode_asn1",
+    "arguments": {
+        "spec": {
+            "type": "set-of",
+            "children": [
+                {
+                    "type": "integer",
+                    "value": 2
+                },
+                {
+                    "type": "integer",
+                    "value": 1
+                }
+            ]
+        },
+        "outputMode": "file",
+        "outputPath": "out/set-of.asn1"
+    },
+    "documentationOnly": true
+}

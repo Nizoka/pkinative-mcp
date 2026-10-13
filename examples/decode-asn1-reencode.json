@@ -1,0 +1,16 @@
+{
+    "description": "Re-encode the tbsCertificate (nodePath 0) of a certificate through the engine encoder and deliver it as inline hex; reencode.identical says the bytes are the input bytes.",
+    "tool": "decode_asn1",
+    "arguments": {
+        "input": {
+            "path": "fixtures/leaf.crt.der"
+        },
+        "nodePath": "0",
+        "reencode": true,
+        "encoding": "hex",
+        "fields": [
+            "reencode",
+            "artefact"
+        ]
+    }
+}

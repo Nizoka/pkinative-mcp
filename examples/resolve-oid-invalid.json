@@ -1,0 +1,11 @@
+{
+    "description": "Encoding an invalid OID is the engine PKI_OID_INVALID (mode validate reports it instead of failing).",
+    "tool": "resolve_oid",
+    "arguments": {
+        "mode": "encode",
+        "oids": [
+            "x.y"
+        ]
+    },
+    "expectError": "PKI_OID_INVALID"
+}

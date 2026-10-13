@@ -1,0 +1,9 @@
+{
+    "description": "Page the engine OID registry filtered on a name fragment (case-insensitive on the name or the dotted OID).",
+    "tool": "resolve_oid",
+    "arguments": {
+        "mode": "list",
+        "filter": "ocsp",
+        "limit": 20
+    }
+}

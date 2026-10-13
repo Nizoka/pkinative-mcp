@@ -1,0 +1,33 @@
+{
+    "description": "Encode OIDs as whole TLVs, then decode such bytes back to the dotted form with the registered name, and a RELATIVE-OID.",
+    "steps": [
+        {
+            "tool": "resolve_oid",
+            "arguments": {
+                "mode": "encode",
+                "oids": [
+                    "2.5.4.3",
+                    "1.2.840.113549"
+                ],
+                "form": "tlv"
+            }
+        },
+        {
+            "tool": "resolve_oid",
+            "arguments": {
+                "mode": "decode",
+                "hex": "0603550403",
+                "form": "tlv"
+            }
+        },
+        {
+            "tool": "resolve_oid",
+            "arguments": {
+                "mode": "decode",
+                "hex": "0d04c27b0302",
+                "form": "tlv",
+                "relative": true
+            }
+        }
+    ]
+}

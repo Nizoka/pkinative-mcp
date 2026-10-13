@@ -1,0 +1,10 @@
+{
+    "description": "A private key is never dumped as a node tree (its previews would be key bytes): SECURITY_VIOLATION, remedy inspect_private_key.",
+    "tool": "decode_asn1",
+    "arguments": {
+        "input": {
+            "path": "fixtures/leaf.key.pem"
+        }
+    },
+    "expectError": "SECURITY_VIOLATION"
+}

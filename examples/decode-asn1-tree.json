@@ -1,0 +1,15 @@
+{
+    "description": "The shape of a certificate as an ASN.1 node tree: the path, tag name and (for OBJECT IDENTIFIERs) registered name of every node — the way to find a nodePath.",
+    "tool": "decode_asn1",
+    "arguments": {
+        "input": {
+            "path": "fixtures/leaf.crt.pem"
+        },
+        "fields": [
+            "nodes.path",
+            "nodes.tagName",
+            "nodes.oidName",
+            "nodeCount"
+        ]
+    }
+}

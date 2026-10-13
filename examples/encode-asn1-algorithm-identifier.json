@@ -1,0 +1,16 @@
+{
+    "description": "Build an AlgorithmIdentifier for ecdsa-with-SHA256 from a JSON spec and get its DER as inline hex (300a06082a8648ce3d040302).",
+    "tool": "encode_asn1",
+    "arguments": {
+        "spec": {
+            "type": "sequence",
+            "children": [
+                {
+                    "type": "oid",
+                    "value": "1.2.840.10045.4.3.2"
+                }
+            ]
+        },
+        "encoding": "hex"
+    }
+}
