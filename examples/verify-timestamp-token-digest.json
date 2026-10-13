@@ -1,0 +1,11 @@
+{
+    "description": "Verify a bare token against the SHA-256 digest it stamps, token-frugal.",
+    "tool": "verify_timestamp",
+    "arguments": {
+        "token": { "path": "fixtures/content.tst" },
+        "digestHex": "b1a1c762480b580288e0737422f01130e824c8014422371ae571880dfc642533",
+        "trustAnchors": [{ "path": "fixtures/root.crt.pem" }],
+        "at": "2027-01-01T00:00:00Z",
+        "verbosity": "summary"
+    }
+}

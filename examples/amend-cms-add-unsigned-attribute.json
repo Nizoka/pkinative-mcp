@@ -1,0 +1,20 @@
+{
+    "description": "Append a private unsigned attribute (OID 1.2.3.4 holding one OID value) to signer 0, then read the amended message back.",
+    "steps": [
+        {
+            "tool": "amend_cms",
+            "arguments": {
+                "signedData": { "path": "fixtures/attached.p7s" },
+                "operation": "add-unsigned-attribute",
+                "attribute": "300d06032a0304310606042a030405"
+            }
+        },
+        {
+            "tool": "inspect_cms",
+            "arguments": {
+                "signedData": { "derBase64": "<base64 from step 1>" },
+                "fields": ["signerInfos.unsignedAttributes", "signerInfos.timeStampTokens"]
+            }
+        }
+    ]
+}

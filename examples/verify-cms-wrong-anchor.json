@@ -1,0 +1,10 @@
+{
+    "description": "A negative verdict is not an error: the signature is intact but the signer does not chain to the anchor given (valid:false, PKI_REASON_NO_TRUST_ANCHOR).",
+    "tool": "verify_cms",
+    "arguments": {
+        "signedData": { "path": "fixtures/attached.p7s" },
+        "trustAnchors": [{ "path": "fixtures/ed25519.crt.pem" }],
+        "at": "2027-01-01T00:00:00Z",
+        "verbosity": "summary"
+    }
+}
