@@ -85,7 +85,7 @@ after `npm run build && npm run test:generate` (only with a declared rebaseline)
 ## Counts and versions
 
 34 tools, 7 prompts, 21 wrapper codes, 57 `PKI_*` error codes, 43 `PKI_REASON_*` reasons, 97 `PKI_DIAG_*` diagnostics, 22 engine limits, 9 operator variables,
-89 examples, 2173 tests, 98 samples in the baseline, 23 + 5 corpus entries, 42 fixtures. `docs/assets/ecosystem.json` is the source of every count and version.
+89 examples, 2229 tests, 98 samples in the baseline, 23 + 5 corpus entries, 42 fixtures. `docs/assets/ecosystem.json` is the source of every count and version.
 Coverage thresholds: `vitest.config.ts` (94 / 90 / 95 / 94). Engine pkinative 1.0.0 (`^1.0.0`); Node ≥ 22; `tools/list` under 448 KiB, instructions under 8 KiB.
 
 ## Releasing and governance

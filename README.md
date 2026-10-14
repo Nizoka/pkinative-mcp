@@ -672,7 +672,7 @@ npm run gate              # the CI profile: + build, dist checks, stdio smoke te
 npx tsx scripts/gate.ts --publish --require-all   # release branches: everything incl. lint:certs (zlint / pkilint); a skipped step fails
 ```
 
-`npm run gate` ([`scripts/gate.ts`](scripts/gate.ts)) is the single definition of green — 2173 tests across 106 files, the coverage thresholds of `vitest.config.ts` (94 / 90 / 95 / 94), and the **built** server driven over stdio, where stdout must carry JSON-RPC frames only and `dist/` must hold no byte of a test key. It prints one line per step and writes the logs to `test-output/.gate/<step>.log`; `--only <step>` runs one step, `--from <step>` resumes, `--json` gives machine output (call the script directly to pass flags: PowerShell swallows a bare `--` after `npm run`). The individual steps are ordinary npm scripts:
+`npm run gate` ([`scripts/gate.ts`](scripts/gate.ts)) is the single definition of green — 2229 tests across 106 files, the coverage thresholds of `vitest.config.ts` (94 / 90 / 95 / 94), and the **built** server driven over stdio, where stdout must carry JSON-RPC frames only and `dist/` must hold no byte of a test key. It prints one line per step and writes the logs to `test-output/.gate/<step>.log`; `--only <step>` runs one step, `--from <step>` resumes, `--json` gives machine output (call the script directly to pass flags: PowerShell swallows a bare `--` after `npm run`). The individual steps are ordinary npm scripts:
 
 | Script | What it does |
 | ------ | ------------ |

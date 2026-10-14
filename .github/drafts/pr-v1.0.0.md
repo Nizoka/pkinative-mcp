@@ -15,7 +15,7 @@ For an agent calling the tools, the server teaches its own doctrine: `SERVER_INS
 
 For the repository, this release ships with the engineering standard of its siblings (pdfnative-mcp 1.7.0, zipnative-mcp 1.0.0): one quality gate (`scripts/gate.ts`, fast / ci / publish profiles, the built server driven over stdio with stdout purity enforced), OpenSSL 3 as the blocking external judge of every artefact the server writes, a sample baseline, a pinned catalogue under a size budget, docs as code (`docs/assets/ecosystem.json` + `npm run verify:docs`, 27 rules), a committed agent layer (settings, fail-closed guard hook on Bash and PowerShell, generated rules, the release-audit skill), hardened workflows with Trusted Publishing, SBOM and attestation, and `scripts/release-prepare.ts`.
 
-Counts (`docs/assets/ecosystem.json`): 34 tools, 7 prompts, 21 wrapper codes, 9 operator variables; 89 examples; 98 samples in the baseline (10 byte-exact, 3 `tbs`, 85 semantic); conformance corpus 23 + 5 corpus entries; 2173 tests across 106 files <!-- re-measure -->; 42 fixtures; 117 runtime exports reached 117 / 117.
+Counts (`docs/assets/ecosystem.json`): 34 tools, 7 prompts, 21 wrapper codes, 9 operator variables; 89 examples; 98 samples in the baseline (10 byte-exact, 3 `tbs`, 85 semantic); conformance corpus 23 + 5 corpus entries; 2229 tests across 106 files; 42 fixtures; 117 runtime exports reached 117 / 117.
 
 ## What changed
 
@@ -53,7 +53,7 @@ What actually ran on the release branch (Windows 11, Node 22, OpenSSL 3.5.5). A 
 | Command | Result |
 |---|---|
 | `npx tsx scripts/gate.ts --publish --require-all` | not run yet — the integrator runs it on the final tree <!-- re-measure --> |
-| `npm run test` | 106 files, 2173 tests (2156 passed, 17 skipped) <!-- re-measure --> |
+| `npm run test` | 106 files, 2229 tests (2212 passed, 16 skipped) |
 | `npm run test:coverage` — coverage | thresholds 94 / 90 / 95 / 94 <!-- re-measure --> |
 | `npm run build && npm run test:generate && npm run verify:samples` | 98 samples in the baseline (10 byte-exact, 3 `tbs`, 85 semantic) <!-- re-measure --> |
 | `npm run corpus:pki && npm run validate:pki` | 23 conformant + 5 refused canaries — OpenSSL 3.5.5 <!-- re-measure --> |

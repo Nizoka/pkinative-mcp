@@ -49,9 +49,9 @@ describe('gate: step table', () => {
         expect(publish).toEqual(STEPS.filter((s) => s.id !== 'test').map((s) => s.id));
     });
 
-    it('the skippable steps are verify:docs (until the script lands), the OpenSSL steps and lint:certs', () => {
+    it('the skippable steps are the OpenSSL steps and lint:certs (a missing judge skips with a reason; --require-all fails it)', () => {
         const skippable = STEPS.filter((s) => s.skipWhen !== undefined).map((s) => s.id);
-        expect(skippable).toEqual(['verify:docs', 'validate:pki', 'interop', 'lint:certs']);
+        expect(skippable).toEqual(['validate:pki', 'interop', 'lint:certs']);
     });
 
     it('interop and lint:certs carry their skip condition and the env that makes an absent tool fatal', () => {

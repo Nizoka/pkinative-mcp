@@ -24,7 +24,7 @@
     }
   },
   "declared": {
-    "tests": 2173,
+    "tests": 2229,
     "coverageStatements": 94,
     "coverageBranches": 90,
     "coverageFunctions": 95,
