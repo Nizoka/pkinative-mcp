@@ -15,7 +15,7 @@ For an agent calling the tools, the server teaches its own doctrine: `SERVER_INS
 
 For the repository, this release ships with the engineering standard of its siblings (pdfnative-mcp 1.7.0, zipnative-mcp 1.0.0): one quality gate (`scripts/gate.ts`, fast / ci / publish profiles, the built server driven over stdio with stdout purity enforced), OpenSSL 3 as the blocking external judge of every artefact the server writes, a sample baseline, a pinned catalogue under a size budget, docs as code (`docs/assets/ecosystem.json` + `npm run verify:docs`, 27 rules), a committed agent layer (settings, fail-closed guard hook on Bash and PowerShell, generated rules, the release-audit skill), hardened workflows with Trusted Publishing, SBOM and attestation, and `scripts/release-prepare.ts`.
 
-Counts (`docs/assets/ecosystem.json`): 34 tools, 7 prompts, 21 wrapper codes, 9 operator variables; 89 examples; 98 samples in the baseline (10 byte-exact, 3 `tbs`, 85 semantic); conformance corpus 23 + 5 corpus entries; 2263 tests across 107 files; 42 fixtures; 117 runtime exports reached 117 / 117.
+Counts (`docs/assets/ecosystem.json`): 34 tools, 7 prompts, 21 wrapper codes, 9 operator variables; 89 examples; 98 samples in the baseline (10 byte-exact, 3 `tbs`, 85 semantic); conformance corpus 23 + 5 corpus entries; 2275 tests across 107 files; 42 fixtures; 117 runtime exports reached 117 / 117.
 
 ## What changed
 
@@ -40,7 +40,7 @@ Counts (`docs/assets/ecosystem.json`): 34 tools, 7 prompts, 21 wrapper codes, 9 
 - `AGENTS.md` (repository rules), `CLAUDE.md` = `@AGENTS.md` + addendum, `docs/AGENT_CONTRACT.md` (§1 catalogue … §6 error reference — the consumer contract), `.claude/settings.json` (no commit attribution, Read denies, HITL denies for Bash and PowerShell), `.claude/hooks/guard.mjs`, `.claude/rules/` generated from `.github/instructions/`, `.claude/skills/release-audit/`, `.github/prompts/`, `.github/ai-governance.json`, `.github/AGENT_RULES.md`, `.github/copilot-instructions.md`.
 
 ### Tests, examples and samples
-- 107 test files (2263 tests), among them `autonomy` (S0–S18 over stdio / HTTP × legacy / 2026-07-28), `secret-leak`, `pki-fuzz`, `prototype-pollution`, `coverage-matrix` (117 / 117 runtime exports), `schema-lockstep`, `schema-conformance`, `catalogue-parity`, `examples`, `cache-policy`, `protocol-revisions`, `diagnostics-inventory` (2 diagnostics from the fixtures, 30 from hand-built values, 65 listed as not reachable with the fixtures and why), `error-codes` (every wrapper code exercised, every `PKI_*` code reached or listed with the reason), `docs-consistency`, `tests/interop/*`, `tests/tools/*`.
+- 107 test files (2275 tests), among them `autonomy` (S0–S18 over stdio / HTTP × legacy / 2026-07-28), `secret-leak`, `pki-fuzz`, `prototype-pollution`, `coverage-matrix` (117 / 117 runtime exports), `schema-lockstep`, `schema-conformance`, `catalogue-parity`, `examples`, `cache-policy`, `protocol-revisions`, `diagnostics-inventory` (2 diagnostics from the fixtures, 30 from hand-built values, 65 listed as not reachable with the fixtures and why), `error-codes` (every wrapper code exercised, every `PKI_*` code reached or listed with the reason), `docs-consistency`, `tests/interop/*`, `tests/tools/*`.
 - 89 examples under `examples/` executed by `tests/examples.test.ts`; 98 samples in `tests/_fixtures/samples.sha256.json`; 42 OpenSSL-made TEST-ONLY fixtures pinned by `SHA256SUMS` (password `test-only-password`), never regenerated in place.
 
 ### Documentation
@@ -53,8 +53,8 @@ What actually ran on the release branch (Windows 11, Node 22, OpenSSL 3.5.5). Ev
 | Command | Result |
 |---|---|
 | `PKINATIVE_INTEROP_REQUIRED=1 npx tsx scripts/gate.ts --ci --require-all` | every step PASS, none skipped (the publish profile adds `lint:certs`; zlint and pkilint are installed by `publish.yml`, not on the dev host) |
-| `npm run test` | 107 files, 2263 tests (2249 passed, 14 skipped) |
-| `npm run test:coverage` — coverage | 98.45 / 91.97 / 99.45 / 99.03 (statements / branches / functions / lines), thresholds 94 / 90 / 95 / 94 |
+| `npm run test` | 107 files, 2275 tests (2261 passed, 14 skipped) |
+| `npm run test:coverage` — coverage | 98.41 / 92.04 / 99.46 / 98.97 (statements / branches / functions / lines), thresholds 94 / 90 / 95 / 94 |
 | `npm run build && npm run test:generate && npm run verify:samples` | 98 samples in the baseline (10 byte-exact, 3 `tbs`, 85 semantic); `--strict`: 98 tracked samples match |
 | `npm run corpus:pki && npm run validate:pki` | 23 PASS, 5 REFUSED, 0 FAIL, 0 XPASS, 0 SKIP — 57 engine checks, 30 OpenSSL checks, OpenSSL 3.5.5 |
 | `npm run test:interop` | OpenSSL 3.5.5, `PKINATIVE_INTEROP_REQUIRED=1`: 51 passed, 1 skipped (the linters, publish profile only) |
@@ -64,6 +64,10 @@ What actually ran on the release branch (Windows 11, Node 22, OpenSSL 3.5.5). Ev
 | Built server over stdio (`node dist/cli.js`) | gate `smoke`: handshake, `tools/list` = 34 tools, `serverInfo.version` = 1.0.0, JSON-RPC frames only on stdout — PASS, 34 tools |
 
 Independent audit: `/release-audit release-notes/v1.0.0.md` — PENDING (the first release has no previous tag to diff against; the audit runs over the whole tree).
+
+### Release audit
+
+Two auditors (security, hardening and protocol conformance; API coverage, doctrine and documentation parity) and an adversarial verifier ran over the release commit (`.claude/skills/release-audit/`): 107 rows, 102 confirmed, 2 rejected, 3 duplicates. One blocker (A-019: a PKCS#8 key under a harmless file name was listed and served by `resources/*`), three majors (A-031: the operator pin was not part of the cache key; B-009: `encode_asn1` accepted unknown spec members; B-011: a documented `remedy` member no verdict returned) and sixteen minors were fixed in the commits that carry their id (`fix(resources): … (A-019)`, `fix(cache): … (A-031)`, `fix(tools): … (B-009) … (B-010)`, `fix(tools): … (A-039, A-040) … (V-001)`, `test: … (A-009)`, `docs: … (B-011, …)`), each with a test named by the finding; five notes are recorded. Verdict: **GO** — the gate above was re-run green after the loop.
 
 ## API stability
 
