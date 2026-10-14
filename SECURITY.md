@@ -4,10 +4,10 @@
 
 The latest published minor on npm receives security patches. Older versions are unsupported once a new minor lands.
 
-| Version | Supported |
-| ------- | --------- |
-| `1.0.x` | yes |
-| < 1.0 (never published to npm) | no |
+| Version  | Supported          |
+| -------- | ------------------ |
+| `1.0.x`  | :white_check_mark: |
+| `< 1.0`  | :x:                |
 
 ## Reporting a vulnerability
 
