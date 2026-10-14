@@ -164,7 +164,7 @@
     "create-certificate-issue-leaf.step1.crt": {
       "mode": "tbs",
       "hash": "3037a57e9c73bf336e0fd5ff90d2bd1d13ee9d1589a36e4930dfa9f7df7391ee",
-      "size": 471,
+      "size": 472,
       "since": "1.0.0"
     },
     "create-certificate-self-signed-ca.json": {
@@ -253,8 +253,8 @@
     },
     "decode-asn1-private-key-refused.json": {
       "mode": "semantic",
-      "hash": "8906db52aafdd7f36b43ab01728de045bdb7e6c81aca9500098fda92683f50f6",
-      "size": 393,
+      "hash": "67809c47929c9cc7330e1ac7d7e637826c714e3de965a94847fd23931129d8f0",
+      "size": 485,
       "since": "1.0.0"
     },
     "decode-asn1-read.json": {
