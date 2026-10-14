@@ -1,0 +1,132 @@
+{
+  "$comment": "Single source of every count and version quoted in the docs, the agent files and the release notes. `npm run verify:docs` holds every document to it; `npm run release:prepare` bumps `packages.pkinative-mcp.version` and `verifiedOn`. `declared` holds figures no filesystem walk can derive (measured at release, or an inventory of the engine the verifier checks against the vendored registries under docs/data/); `derived` holds figures verify:docs recomputes from the source tree (the registry of src/tools/, the PROMPTS table, every ToolError code, server.json, examples/, tests/, the sample baseline, the corpus table) and fails when they drift. `assertions` are the prose tokens each listed file must carry verbatim. `declared.toolsListBytes` is the UTF-8 size of the built `tools/list` payload, held within 2 % by `npx tsx scripts/tool-shape.ts --check` (gate step `verify:tool-shape`), which also enforces the 448 KiB catalogue and 8 KiB instructions budgets and prints `declared.instructionsBytes`. `declared.tests` is the whole vitest suite, skipped tests included, as the gate's test-output/.gate/vitest.json counts it.",
+  "verifiedOn": "2026-10-13",
+  "packages": {
+    "pkinative-mcp": {
+      "version": "1.0.0",
+      "pinField": null,
+      "pin": null,
+      "repo": "https://github.com/Nizoka/pkinative-mcp",
+      "binary": "pkinative-mcp",
+      "registryName": "io.github.Nizoka/pkinative-mcp"
+    },
+    "pkinative": {
+      "version": "1.0.0",
+      "pinField": "dependencies",
+      "pin": "^1.0.0",
+      "repo": "https://github.com/Nizoka/pkinative"
+    },
+    "pkinative-cli": {
+      "version": "1.0.0",
+      "pinField": null,
+      "pin": null,
+      "repo": "https://github.com/Nizoka/pkinative-cli"
+    }
+  },
+  "declared": {
+    "tests": 2173,
+    "coverageStatements": 94,
+    "coverageBranches": 90,
+    "coverageFunctions": 95,
+    "coverageLines": 94,
+    "wrapperCodes": 21,
+    "engineErrorCodes": 57,
+    "engineReasonCodes": 43,
+    "engineDiagnosticCodes": 97,
+    "engineLimits": 22,
+    "engineExports": 294,
+    "runtimeExports": 117,
+    "typeExports": 177,
+    "fixtures": 42,
+    "dependencies": 3,
+    "toolsListBytes": 427850,
+    "instructionsBytes": 5469,
+    "nodeMajor": 22,
+    "nodeFloor": "^22.22.2 || ^24.14.1 || >=25.8.2",
+    "mcpRevision": "2026-07-28",
+    "legacyRevisions": ["2024-10-07", "2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"],
+    "sdk": { "name": "@modelcontextprotocol/server", "pin": "^2.0.0", "installed": "2.3.1" },
+    "zod": { "pin": "^4.2.0" },
+    "toolApiVersion": "1.0.0",
+    "cliCommandGroups": 18,
+    "cliInvocations": 53
+  },
+  "derived": {
+    "tools": 34,
+    "toolGroups": {
+      "Encodings": ["convert_pem", "resolve_oid", "compute_fingerprint", "decode_asn1", "encode_asn1"],
+      "Certificates and requests": ["inspect_certificate", "create_certificate", "encode_x509_structure", "decode_extension", "check_certificate_name", "check_certificate_purpose", "inspect_csr", "create_csr"],
+      "Paths, CRLs and OCSP": ["verify_certificate_chain", "build_certificate_path", "validate_certificate_path", "inspect_crl", "check_crl_revocation", "create_ocsp_request", "inspect_ocsp_response", "check_ocsp_status"],
+      "CMS and time-stamps": ["sign_cms", "verify_cms", "inspect_cms", "amend_cms", "create_timestamp_request", "inspect_timestamp", "verify_timestamp"],
+      "Keys": ["inspect_private_key", "inspect_pkcs12", "open_pkcs12"],
+      "Meta": ["describe_engine", "explain_code", "draft_governance_issue"]
+    },
+    "prompts": 7,
+    "errorCodes": 26,
+    "envVars": 9,
+    "examples": 89,
+    "testFiles": 106,
+    "samples": 98,
+    "corpusEntries": 28,
+    "corpusConformant": 23,
+    "corpusRefused": 5
+  },
+  "assertions": [
+    {
+      "id": "tool-count",
+      "canonical": "{derived.tools} tools",
+      "match": "(?<![#.\\d])(?<!\\b(?:on|across|among|within|for)\\s)(?<!\\b(?:on|across|among|within|for)\\sthe\\s)(?<!\\()\\b(\\d+)\\s+tools\\b",
+      "expectFrom": "derived.tools",
+      "requireIn": ["README.md", "docs/AGENT_CONTRACT.md", "docs/KNOWLEDGE_BASE.md", "llms.txt", "AGENTS.md"]
+    },
+    {
+      "id": "prompt-count",
+      "canonical": "{derived.prompts} prompts",
+      "match": "(?<![#.\\d])\\b(\\d+)\\s+(?:MCP\\s+)?prompts\\b",
+      "expectFrom": "derived.prompts",
+      "requireIn": ["README.md", "AGENTS.md"]
+    },
+    {
+      "id": "wrapper-code-count",
+      "canonical": "{declared.wrapperCodes} wrapper codes",
+      "match": "\\b(\\d+)\\s+wrapper(?:\\s+error)?\\s+codes\\b",
+      "expectFrom": "declared.wrapperCodes",
+      "requireIn": []
+    },
+    {
+      "id": "engine-error-count",
+      "canonical": "{declared.engineErrorCodes} `PKI_*` error codes",
+      "match": "\\b(\\d+)\\s+`?PKI_\\*`?\\s+(?:error\\s+)?codes\\b",
+      "expectFrom": "declared.engineErrorCodes",
+      "requireIn": []
+    },
+    {
+      "id": "engine-reason-count",
+      "canonical": "{declared.engineReasonCodes} `PKI_REASON_*` verdict reasons",
+      "match": "\\b(\\d+)\\s+`?PKI_REASON_\\*`?\\s+(?:verdict\\s+)?(?:reasons|codes)\\b",
+      "expectFrom": "declared.engineReasonCodes",
+      "requireIn": []
+    },
+    {
+      "id": "engine-diagnostic-count",
+      "canonical": "{declared.engineDiagnosticCodes} `PKI_DIAG_*` diagnostics",
+      "match": "\\b(\\d+)\\s+`?PKI_DIAG_\\*`?\\s+(?:diagnostics|diagnostic codes|codes)\\b",
+      "expectFrom": "declared.engineDiagnosticCodes",
+      "requireIn": []
+    },
+    {
+      "id": "env-var-count",
+      "canonical": "{derived.envVars} environment variables",
+      "match": "\\b(\\d+)\\s+(?:environment|operator)\\s+variables\\b",
+      "expectFrom": "derived.envVars",
+      "requireIn": []
+    },
+    {
+      "id": "runtime-export-count",
+      "canonical": "{declared.runtimeExports} runtime exports",
+      "match": "\\b(\\d+)\\s+runtime exports\\b",
+      "expectFrom": "declared.runtimeExports",
+      "requireIn": []
+    }
+  ]
+}

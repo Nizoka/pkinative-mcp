@@ -1,0 +1,59 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: pkinative-mcp
+type: software
+authors:
+  - name: Nizoka
+    website: "https://github.com/Nizoka"
+repository-code: "https://github.com/Nizoka/pkinative-mcp"
+url: "https://github.com/Nizoka/pkinative-mcp"
+abstract: >-
+  Model Context Protocol (MCP) server bridging the zero-dependency pkinative
+  PKI engine to AI clients. Provides 34 tools for inspecting and verifying
+  X.509 certificates, certification requests, CRLs, OCSP responses, CMS
+  SignedData messages and RFC 3161 time-stamps; building and validating
+  certificate chains (RFC 5280 path validation, RFC 6125 name checks,
+  extended key usage, offline CRL and OCSP revocation); creating certificates,
+  certification requests, CMS signatures, OCSP requests and time-stamp
+  requests with keys that never leave the host's Web Crypto; opening PKCS#8
+  keys and PKCS#12 files without returning a key byte; decoding and encoding
+  ASN.1, PEM and object identifiers; an offline capability preflight, a code
+  explainer and human-in-the-loop governance issue drafting. Every artefact
+  the server writes is validated against OpenSSL 3 in continuous
+  integration. Speaks MCP 2026-07-28 with automatic fallback for 2024- and
+  2025-era clients and makes no network call, ever.
+license: MIT
+version: 1.0.0
+date-released: "2026-10-13"
+keywords:
+  - mcp
+  - model-context-protocol
+  - pki
+  - x509
+  - certificate
+  - csr
+  - crl
+  - ocsp
+  - cms
+  - pkcs7
+  - rfc3161
+  - timestamp
+  - pkcs8
+  - pkcs12
+  - asn1
+  - der
+  - pem
+  - rfc5280
+  - path-validation
+  - openssl-interop
+  - secure-by-default
+  - ai-tools
+  - ai-governance
+  - human-in-the-loop
+references:
+  - type: software
+    title: "pkinative — A zero-dependency, pure-TypeScript PKI engine with Web Crypto signatures"
+    version: 1.0.0
+    authors:
+      - name: Nizoka
+    repository-code: "https://github.com/Nizoka/pkinative"

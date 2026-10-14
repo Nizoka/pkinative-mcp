@@ -1,7 +1,7 @@
 # Fixture provenance
 
 Every file under `pki/` was produced by **OpenSSL 3.5.5** running
-[`scripts/fixtures/make-test-pki.sh`](../../scripts/fixtures/make-test-pki.sh)
+[`make-test-pki.sh`](make-test-pki.sh)
 on 2026-10-04. It has foreign provenance: neither the CLI nor pkinative wrote
 any of it, so a defect cannot be baked into both a fixture and its reading.
 The files are never regenerated in place; re-running the script makes new keys,

@@ -1,0 +1,309 @@
+{
+  "$comment": "The registry of every validation reason pkinative can return. The reason-parity rule of scripts/verify-docs.ts keeps it in bidirectional sync with the PkiReasonCode union of src/types/pki-reasons.ts and requires a factory for every code in src/core/pki-reasons.ts. A reason is RETURNED in a report, never thrown and never emitted: reason-parity refuses a PKI_REASON_* literal inside a throw, refuses a message beginning with 'pkinative: ' (that prefix marks what is thrown, and keeping it exclusive is what lets a log reader tell an exception from a verdict), and requires the three registries to be disjoint. This vocabulary is grow-only (ADR 0018): every name is frozen with the export surface — docs/assets/api.frozen.json lists them and api-surface-frozen holds them, so a removal or a rename is semver-major — and a new reason is semver-minor, because the set of reasons a chain can be rejected for grows with the standards.",
+  "schemaVersion": 1,
+  "package": "pkinative",
+  "verifiedOn": "2026-09-25",
+  "reasons": [
+    {
+      "code": "PKI_REASON_INPUT_MALFORMED",
+      "since": "0.5.0",
+      "returnedWhen": "The bytes are not the structure they claim to be.",
+      "remedy": "Read the errorCode field: it carries the PkiErrorCode the parser would have thrown, so the reason registry wraps the error registry instead of duplicating it.",
+      "standard": "ITU-T X.690"
+    },
+    {
+      "code": "PKI_REASON_NOT_YET_VALID",
+      "since": "0.5.0",
+      "returnedWhen": "The validation instant is before the certificate's notBefore.",
+      "remedy": "Validate at an instant inside the window, or obtain a certificate that is already valid.",
+      "standard": "RFC 5280 §6.1.3 (a)(2)"
+    },
+    {
+      "code": "PKI_REASON_EXPIRED",
+      "since": "0.5.0",
+      "returnedWhen": "The validation instant is after the certificate's notAfter.",
+      "remedy": "Renew the certificate. Validating at an earlier instant is only correct when checking a signature made then.",
+      "standard": "RFC 5280 §6.1.3 (a)(2)"
+    },
+    {
+      "code": "PKI_REASON_NAME_MISMATCH",
+      "since": "0.5.0",
+      "returnedWhen": "No name in the certificate matches the host or address the caller asked about (RFC 6125).",
+      "remedy": "A certificate that verifies is not a certificate for the host you connected to. Check the subjectAltName; a matching commonName does not count unless you opted into the deprecated fallback.",
+      "standard": "RFC 6125 §6"
+    },
+    {
+      "code": "PKI_REASON_PURPOSE_NOT_PERMITTED",
+      "since": "0.5.0",
+      "returnedWhen": "A certificate on the path carries extKeyUsage and does not name the purpose the caller asked checkExtendedKeyUsage for — or, with requireExplicit, carries no extKeyUsage at all. By default a CA's own extKeyUsage restricts what it may issue for, which no sentence of RFC 5280 requires and every Web PKI validator does.",
+      "remedy": "A chain that validates is sound for what its CAs granted, which may not be what you are doing with it. Ask the issuer for a certificate naming the purpose you need; if the restriction comes from a CA above the leaf, that CA was deliberately constrained and the leaf should not have been issued. restrictIssuers: false is the literal-RFC reading, for an internal PKI that puts a purpose on a CA as documentation.",
+      "standard": "RFC 5280 §4.2.1.12"
+    },
+    {
+      "code": "PKI_REASON_UNKNOWN_CRITICAL_EXTENSION",
+      "since": "0.5.0",
+      "returnedWhen": "A certificate carries a critical extension this implementation does not recognise.",
+      "remedy": "RFC 5280 requires refusal, not tolerance: an extension marked critical is one the issuer says must be understood.",
+      "standard": "RFC 5280 §6.1.3 (f)"
+    },
+    {
+      "code": "PKI_REASON_NAME_NOT_PERMITTED",
+      "since": "0.5.0",
+      "returnedWhen": "A name in the certificate falls outside the permitted subtrees a CA above it set.",
+      "remedy": "A sub-CA cannot issue for names its issuer withheld. Either the certificate names the wrong host, or it was issued under the wrong CA.",
+      "standard": "RFC 5280 §6.1.3 (b)"
+    },
+    {
+      "code": "PKI_REASON_NAME_EXCLUDED",
+      "since": "0.5.0",
+      "returnedWhen": "A name in the certificate falls inside a subtree a CA above it excluded.",
+      "remedy": "An exclusion anywhere on the path wins over every permission; there is no CA below that can grant it back.",
+      "standard": "RFC 5280 §6.1.3 (c)"
+    },
+    {
+      "code": "PKI_REASON_REVOKED",
+      "since": "0.5.0",
+      "returnedWhen": "The certificate is listed in a revocation list that covers it, from its issuer, whose signature a key entitled to sign it verified — or an OCSP response verified and signed by an authorised responder says it is revoked. A listing on any other list or response is not evidence and is never this code.",
+      "remedy": "The message carries the revocation date: a signature made before that instant may still be good, and a caller deciding that needs the date.",
+      "standard": "RFC 5280 §5.1"
+    },
+    {
+      "code": "PKI_REASON_REVOCATION_STALE",
+      "since": "0.5.0",
+      "returnedWhen": "The revocation list, or the OCSP answer, has no nextUpdate (an OCSP answer: beyond thisUpdate plus the caller staleTolerance, unless it says revoked), or its nextUpdate has passed beyond the caller staleTolerance, or the OCSP answer's thisUpdate lies beyond the futureTolerance.",
+      "remedy": "Fetch a current list. An out-of-date list says what was revoked then, not now.",
+      "standard": "RFC 5280 §5.1.2.5"
+    },
+    {
+      "code": "PKI_REASON_REVOCATION_WRONG_ISSUER",
+      "since": "0.5.0",
+      "returnedWhen": "The revocation list names a different issuer from the certificate, compared by encoded name.",
+      "remedy": "Use the list published by the certificate issuer; a list from another CA says nothing about this certificate.",
+      "standard": "RFC 5280 §6.3.3"
+    },
+    {
+      "code": "PKI_REASON_REVOCATION_OUT_OF_SCOPE",
+      "since": "0.5.0",
+      "returnedWhen": "The list was issued by the right CA but its issuingDistributionPoint declares a scope that excludes this certificate — the wrong kind of certificate, or a distribution point the certificate does not name.",
+      "remedy": "Fetch the list published at the distribution point the certificate's cRLDistributionPoints names. A list that does not cover a certificate does not list it either, so its silence is not evidence.",
+      "standard": "RFC 5280 §5.2.5"
+    },
+    {
+      "code": "PKI_REASON_REVOCATION_PARTIAL",
+      "since": "0.5.0",
+      "returnedWhen": "The list declares onlySomeReasons, or the certificate's distribution point the list answers names reasons, so the certificate's absence from it rules out those revocation reasons (their intersection, RFC 5280 §6.3.3 (d)) and no others.",
+      "remedy": "Supply the other lists the CA publishes for the remaining reasons. verifyCertificateChain accumulates them (RFC 5280 §6.3.3 reasons_mask) and drops this once the union is complete.",
+      "standard": "RFC 5280 §5.2.5"
+    },
+    {
+      "code": "PKI_REASON_REVOCATION_UNKNOWN",
+      "since": "0.5.0",
+      "returnedWhen": "No revocation evidence was available: no list, or one whose signature was never checked or did not verify, or an OCSP response that answers twice about the certificate and disagrees with itself. When such an unauthenticated list or response names the certificate as revoked, that claim is in the message, as a claim.",
+      "remedy": "This is not \"not revoked\". Proceeding on it is a soft-fail decision to make deliberately, not one a validator should make for you.",
+      "standard": "RFC 5280 §6.3"
+    },
+    {
+      "code": "PKI_REASON_REVOCATION_MISMATCH",
+      "since": "0.5.0",
+      "returnedWhen": "A revocation answer is about a different certificate, or does not echo the nonce that was sent.",
+      "remedy": "Retrying will not help: this response was not produced for this question. Suspect a confused responder, a cache serving another answer, or substitution.",
+      "standard": "RFC 6960 §3.2"
+    },
+    {
+      "code": "PKI_REASON_NO_VALID_POLICY",
+      "since": "0.5.0",
+      "returnedWhen": "No certificate policy survives the whole path, and an explicit policy was required by a CA in it or by the caller.",
+      "remedy": "This is the only condition under which policy processing rejects a path. An empty policy tree with nobody requiring an explicit policy is not a failure — the question was never asked.",
+      "standard": "RFC 5280 §6.1.5 (g)"
+    },
+    {
+      "code": "PKI_REASON_POLICY_MAPPING_INVALID",
+      "since": "0.5.0",
+      "returnedWhen": "A policyMappings extension names anyPolicy as an issuerDomainPolicy or a subjectDomainPolicy.",
+      "remedy": "RFC 5280 forbids it. The mapping is ignored rather than honoured, so the path may still fail for want of a policy.",
+      "standard": "RFC 5280 §6.1.4 (a)"
+    },
+    {
+      "code": "PKI_REASON_ISSUER_NOT_FOUND",
+      "since": "0.5.0",
+      "returnedWhen": "No supplied certificate has a subject equal to this certificate's issuer.",
+      "remedy": "Supply the intermediate certificates. A server that sends only its leaf is the usual cause.",
+      "standard": "RFC 5280 §6.1"
+    },
+    {
+      "code": "PKI_REASON_SIGNATURE_INVALID",
+      "since": "0.5.0",
+      "returnedWhen": "The issuer's public key does not verify the certificate's signature.",
+      "remedy": "A verdict, not an incident: these bytes were not signed by that key.",
+      "standard": "RFC 5280 §6.1.3 (a)(1)"
+    },
+    {
+      "code": "PKI_REASON_SIGNATURE_NOT_CHECKED",
+      "since": "0.5.0",
+      "returnedWhen": "The signature could not be checked here — no Web Crypto, or an algorithm this runtime refuses.",
+      "remedy": "This says nothing about whether the signature is valid. Ask again on a runtime that implements the algorithm; never treat it as a rejection.",
+      "standard": "RFC 5280 §6.1.3 (a)(1)"
+    },
+    {
+      "code": "PKI_REASON_NO_TRUST_ANCHOR",
+      "since": "0.5.0",
+      "returnedWhen": "The chain does not end at any supplied trust anchor.",
+      "remedy": "Supply the root. A signature that verifies is not a certificate that is trusted.",
+      "standard": "RFC 5280 §6.1.1 (d)"
+    },
+    {
+      "code": "PKI_REASON_NOT_A_CA",
+      "since": "0.5.0",
+      "returnedWhen": "A certificate issued another without asserting cA in basicConstraints, or keyCertSign in keyUsage.",
+      "remedy": "Only a CA certificate may issue. This is the check whose absence caused the 2008 Basic Constraints attacks.",
+      "standard": "RFC 5280 §6.1.4 (k)"
+    },
+    {
+      "code": "PKI_REASON_PATH_TOO_LONG",
+      "since": "0.5.0",
+      "returnedWhen": "A pathLenConstraint in the chain, or the caller's own bound, is exceeded.",
+      "remedy": "Shorten the chain, or use a CA whose constraint permits it.",
+      "standard": "RFC 5280 §6.1.4 (l)"
+    },
+    {
+      "code": "PKI_REASON_PATH_LOOPS",
+      "since": "0.5.0",
+      "returnedWhen": "The same certificate appears twice in the chain.",
+      "remedy": "Remove the duplicate. A path that revisits a certificate is not a path.",
+      "standard": "RFC 5280 §6.1"
+    },
+    {
+      "code": "PKI_REASON_CMS_NO_SIGNERS",
+      "since": "0.7.0",
+      "returnedWhen": "The SignedData has no SignerInfo. RFC 5652 allows it — it is how .p7b certificate bundles ship a chain — but it signs nothing.",
+      "remedy": "This is a certificate bundle, not a signature. Read its certificates with parseSignedData; there is nothing to verify.",
+      "standard": "RFC 5652 §5.1"
+    },
+    {
+      "code": "PKI_REASON_CMS_SIGNER_NOT_FOUND",
+      "since": "0.7.0",
+      "returnedWhen": "No certificate carried in the message or supplied by the caller matches the signer's identifier — by issuer DER and serial, or by subjectKeyIdentifier extension.",
+      "remedy": "Supply the signer's certificate through the certificates option. The identifier is not signed, so it only selects candidates; the signature decides between them.",
+      "standard": "RFC 5652 §5.3"
+    },
+    {
+      "code": "PKI_REASON_CMS_CONTENT_MISSING",
+      "since": "0.7.0",
+      "returnedWhen": "The content is detached (eContent absent) and neither the content nor its digest was supplied.",
+      "remedy": "Pass content, or contentDigest when the signer used signed attributes. Absent content is never treated as empty content.",
+      "standard": "RFC 5652 §5.2"
+    },
+    {
+      "code": "PKI_REASON_CMS_DIGEST_MISMATCH",
+      "since": "0.7.0",
+      "returnedWhen": "The content does not hash, under the signer's digestAlgorithm, to the value of its messageDigest attribute.",
+      "remedy": "The content was altered, or it is not the content that was signed. For a PDF, check that the digest covers exactly the /ByteRange; for S/MIME, that the MIME entity was canonicalised to CRLF.",
+      "standard": "RFC 5652 §11.2"
+    },
+    {
+      "code": "PKI_REASON_CMS_ATTRIBUTE_INVALID",
+      "since": "0.7.0",
+      "returnedWhen": "A signed attribute breaks the rules of RFC 5652 §11 or RFC 5035: contentType or messageDigest missing, repeated or multi-valued; contentType different from eContentType; an attribute that may only be signed found among the unsigned ones; or signed attributes absent where the content type requires them.",
+      "remedy": "The signer's software is non-conforming, or the attributes were tampered with. The message names the rule broken.",
+      "standard": "RFC 5652 §11"
+    },
+    {
+      "code": "PKI_REASON_CMS_ALGORITHM_MISMATCH",
+      "since": "0.7.0",
+      "returnedWhen": "The digest named by digestAlgorithm, the one built into signatureAlgorithm and the one in a CMSAlgorithmProtection attribute disagree; or the signer used an algorithm refused outright, such as MD5 or id-ecPublicKey in place of an ECDSA signature algorithm.",
+      "remedy": "Treat the signature as unverifiable. Disagreement between these fields is the shape of an algorithm-substitution attack (RFC 6211), and no conforming signer produces it.",
+      "standard": "RFC 6211 §3"
+    },
+    {
+      "code": "PKI_REASON_CMS_SIGNING_CERTIFICATE_MISMATCH",
+      "since": "0.7.0",
+      "returnedWhen": "The signer's signingCertificate or signingCertificateV2 attribute commits to a certificate other than the one whose key verified the signature — its hash, or its issuer and serial, differ.",
+      "remedy": "The signature is being presented under a different certificate for the same key. Supply the certificate the signer committed to; the attribute's hash identifies it.",
+      "standard": "RFC 5035 §3"
+    },
+    {
+      "code": "PKI_REASON_TSP_NOT_GRANTED",
+      "since": "0.7.0",
+      "returnedWhen": "The timestamp response's status is neither granted nor grantedWithMods, so it carries no token. The message carries the status, the TSA's text and its failure codes.",
+      "remedy": "Act on the failure codes: badAlg means the TSA does not accept that digest, unacceptedPolicy that it does not issue under the policy requested, and so on. Ask again, or ask another TSA.",
+      "standard": "RFC 3161 §2.4.2"
+    },
+    {
+      "code": "PKI_REASON_TSP_TOKEN_INVALID",
+      "since": "0.7.0",
+      "returnedWhen": "The token breaks a rule RFC 3161 sets for tokens specifically: more than one signer, a tsa name its signing certificate does not hold, or a message imprint whose digest algorithm pkinative does not compute. A token with no signing-certificate attribute is PKI_REASON_CMS_ATTRIBUTE_INVALID, the rule every signer is held to; content that is not a TSTInfo cannot be read as a token at all and is PKI_REASON_INPUT_MALFORMED.",
+      "remedy": "The TSA is non-conforming or the token was altered. A token that breaks these rules is not evidence of a time, whatever its signature says.",
+      "standard": "RFC 3161 §2.4.2"
+    },
+    {
+      "code": "PKI_REASON_TSP_IMPRINT_MISMATCH",
+      "since": "0.7.0",
+      "returnedWhen": "The token's messageImprint differs from the hash the caller expected — of the request, of the data, or of the signature value it is meant to timestamp.",
+      "remedy": "The token stamps something else. For a signature timestamp, the imprint is the hash of the SignerInfo's signature value octets, without tag or length.",
+      "standard": "RFC 3161 §2.4.2"
+    },
+    {
+      "code": "PKI_REASON_TSP_REQUEST_MISMATCH",
+      "since": "0.7.0",
+      "returnedWhen": "The token does not answer the request that was sent: the request carried a nonce the token does not echo as the same integer, or asked for a policy the token was not issued under.",
+      "remedy": "Do not retry the same response. A missing or different nonce is what a replayed or substituted response looks like; send a new request with a new nonce.",
+      "standard": "RFC 3161 §2.4.2"
+    },
+    {
+      "code": "PKI_REASON_PKCS12_ENCRYPTION_UNSUPPORTED",
+      "since": "0.8.0",
+      "returnedWhen": "A key or a bag of certificates in the container is encrypted with a scheme other than PBES2 with PBKDF2 and AES-CBC — an RFC 7292 Appendix C scheme, PBES1, or public-key privacy mode — or with a PBES2 scheme whose cipher or PRF this runtime's Web Crypto does not implement, such as AES-192 on several browsers; the message says which. The rest of the container is still read.",
+      "remedy": "Convert the file once with OpenSSL 3.4 or later: openssl pkcs12 -in legacy.p12 -legacy -aes256 -out bundle.pem, then openssl pkcs12 -export -in bundle.pem -pbmac1_pbkdf2 -out modern.p12 (-aes256 keeps the key in bundle.pem under AES-256-CBC and the passphrase you give, where -legacy alone would pick 3DES; the export is PBES2 with AES-256-CBC by default; delete bundle.pem afterwards). pkinative will not implement the Appendix B KDF, in any version.",
+      "standard": "RFC 8018 §6.2"
+    },
+    {
+      "code": "PKI_REASON_PKCS12_INTEGRITY_UNVERIFIED",
+      "since": "0.8.0",
+      "returnedWhen": "The container's MAC is keyed with the RFC 7292 Appendix B KDF, or it carries no MAC, or it uses public-key integrity mode — and the caller did not pass allowUnverifiedIntegrity. Its contents are still reported, and valid is false.",
+      "remedy": "Re-export with openssl pkcs12 -export -pbmac1_pbkdf2 (OpenSSL 3.4 or later) so the MAC can be checked. Pass allowUnverifiedIntegrity only for a file whose origin you trust by other means: without a MAC, an unencrypted bag can be replaced by anyone who can write the file.",
+      "standard": "RFC 9579 §3"
+    },
+    {
+      "code": "PKI_REASON_PKCS12_MAC_MISMATCH",
+      "since": "0.8.0",
+      "returnedWhen": "The RFC 9579 PBMAC1 MAC does not match the AuthenticatedSafe under the password given.",
+      "remedy": "Check the password first; a string is encoded as UTF-8. A file that fails with the right password was altered after it was written.",
+      "standard": "RFC 9579 §3"
+    },
+    {
+      "code": "PKI_REASON_PKCS12_DECRYPTION_FAILED",
+      "since": "0.8.0",
+      "returnedWhen": "A key or a bag of certificates would not decrypt, or a key would not unwrap as the algorithm of its certificate, under the password given.",
+      "remedy": "Check the password; a string is encoded as UTF-8, and a Uint8Array is used as given for files written with another encoding. If the MAC verified and a key still fails, the key is not of the certificate's algorithm.",
+      "standard": "RFC 8018 §6.2"
+    },
+    {
+      "code": "PKI_REASON_PKCS12_KEY_UNMATCHED",
+      "since": "0.8.0",
+      "returnedWhen": "A key bag shares its localKeyId with no certificate in the container, so its algorithm — which Web Crypto must be told before it unwraps the key — is unknown.",
+      "remedy": "Decrypt the key with decryptPrivateKey and name its algorithm, or re-export the container with the key's certificate (openssl pkcs12 -export writes the localKeyId on both).",
+      "standard": "RFC 7292 §4.2"
+    },
+    {
+      "code": "PKI_REASON_PKCS12_KEY_UNSUPPORTED",
+      "since": "0.8.0",
+      "returnedWhen": "A key is of a kind Web Crypto does not import as a signing key — DSA, an X25519 or X448 key-agreement key, an EC key on a curve other than P-256, P-384 and P-521 — or this runtime refused it.",
+      "remedy": "Such a key cannot sign through Web Crypto on this runtime. Ed448 is implemented on some runtimes and not others; try another before concluding the file is at fault.",
+      "standard": "W3C WebCryptoAPI"
+    },
+    {
+      "code": "PKI_REASON_PKCS12_RSA_SCHEME_UNSPECIFIED",
+      "since": "1.0.0",
+      "returnedWhen": "A key's certificate carries an rsaEncryption key, which does not say whether it signs with PKCS#1 v1.5 or PSS nor with which hash, and options.rsaAlgorithm did not name them. Web Crypto binds a key to one scheme and one hash when it is unwrapped, and pkinative does not guess.",
+      "remedy": "Call openPkcs12 again with options.rsaAlgorithm — { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' } for nearly every RSA certificate in use, { name: 'RSA-PSS', hash: … } when the key is to sign with PSS.",
+      "standard": "RFC 8017 §8"
+    },
+    {
+      "code": "PKI_REASON_LIMIT_EXCEEDED",
+      "since": "0.5.0",
+      "returnedWhen": "A named PkiLimits bound stopped the search.",
+      "remedy": "The limit field names it. Raise it only for input you trust; path building is exponential in the candidate set.",
+      "standard": "CWE-400"
+    }
+  ]
+}
