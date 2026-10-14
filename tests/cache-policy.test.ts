@@ -52,6 +52,45 @@ function cachedFlag(result: { _meta?: Record<string, unknown> }): unknown {
     return (result._meta as Record<string, unknown> | undefined)?.['cached'];
 }
 
+describe('A-031: the operator pin is part of the key', () => {
+    let cacheDir: string;
+    beforeAll(async () => {
+        await ensureEngineReady();
+    });
+    beforeEach(() => {
+        cacheDir = mkdtempSync(join(tmpdir(), 'pkinative-cache-a031-'));
+        process.env['PKINATIVE_MCP_CACHE_DIR'] = cacheDir;
+    });
+    afterEach(() => {
+        delete process.env['PKINATIVE_MCP_CACHE_DIR'];
+        delete process.env['PKINATIVE_MCP_AT'];
+        rmSync(cacheDir, { recursive: true, force: true });
+    });
+
+    it('A-031: a verdict cached with at omitted under one PKINATIVE_MCP_AT is a miss under another pin, and the new verdict is the pin\'s', async () => {
+        const args = { leaf: fixtureInput('leaf.crt.pem'), candidates: [fixtureInput('inter.crt.pem')], trustAnchors: [fixtureInput('root.crt.pem')], verbosity: 'summary' };
+        process.env['PKINATIVE_MCP_AT'] = AT;
+        const first = await callToolDirect('verify_certificate_chain', args);
+        expect(first.isError).not.toBe(true);
+        expect((first.structuredContent as { valid: boolean }).valid).toBe(true);
+        const hit = await callToolDirect('verify_certificate_chain', args);
+        expect((hit._meta as Record<string, unknown>)['cached']).toBe(true);
+        process.env['PKINATIVE_MCP_AT'] = '2050-01-01T00:00:00Z';
+        const later = await callToolDirect('verify_certificate_chain', args);
+        expect((later._meta as Record<string, unknown> | undefined)?.['cached']).toBeUndefined();
+        const s = later.structuredContent as { valid: boolean; evaluatedAt: string; reasonCodes: string[] };
+        expect(s.valid).toBe(false);
+        expect(s.evaluatedAt).toBe('2050-01-01T00:00:00.000Z');
+        expect(s.reasonCodes).toContain('PKI_REASON_EXPIRED');
+        // Back under the first pin: the first entry is served again, never the second.
+        process.env['PKINATIVE_MCP_AT'] = AT;
+        const again = await callToolDirect('verify_certificate_chain', args);
+        expect((again._meta as Record<string, unknown>)['cached']).toBe(true);
+        expect((again.structuredContent as { valid: boolean }).valid).toBe(true);
+        expect(readdirSync(cacheDir).filter((f) => f.endsWith('.json'))).toHaveLength(2);
+    });
+});
+
 describe('response cache policy', () => {
     it('marks a served-from-cache inspect_certificate result with _meta.cached=true and leaves the first (fresh) result unmarked', async () => {
         const fresh = await callToolDirect('inspect_certificate', INSPECT);

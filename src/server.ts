@@ -31,7 +31,7 @@ import { isPathInput } from './pki-input.js';
 import { readFields, readVerbosity, selectFields } from './projection.js';
 import { listResources, listResourceTemplates, readResource, resourceLinkForPath } from './resources.js';
 import { carriesSecret, PASSWORD_ENV } from './secrets.js';
-import { isClockDependent } from './time.js';
+import { isClockDependent, readPinnedInstant } from './time.js';
 import { PKINATIVE_MCP_VERSION, TOOL_API_VERSION } from './version.js';
 import type { ToolDefinition } from './tools/_definition.js';
 import { TOOLS } from './tools/_registry.js';
@@ -427,8 +427,11 @@ export async function callToolDirect(name: string, args: unknown): Promise<CallT
     try {
         const input = args ?? {};
         const cacheable = isCacheable(tool, input);
+        // A-031: a tool whose result depends on an instant is keyed on the operator pin too — an omitted
+        // `at` resolves to PKINATIVE_MCP_AT, and a verdict cached under one pin must miss under another.
+        const cacheInput = tool.instantInputs !== undefined ? { input, pinnedInstant: readPinnedInstant() } : input;
         if (cacheable) {
-            const hit = getCached<Record<string, unknown>>(name, CACHE_API_VERSION, input);
+            const hit = getCached<Record<string, unknown>>(name, CACHE_API_VERSION, cacheInput);
             if (hit !== null) {
                 const result = dispatchOutput(hit, tool, input);
                 return { ...result, _meta: { ...(result._meta ?? {}), cached: true } };
@@ -436,7 +439,7 @@ export async function callToolDirect(name: string, args: unknown): Promise<CallT
         }
         const output = await tool.handler(input);
         if (cacheable) {
-            setCached(name, CACHE_API_VERSION, input, output);
+            setCached(name, CACHE_API_VERSION, cacheInput, output);
         }
         return dispatchOutput(output, tool, input);
     } catch (err) {
