@@ -164,6 +164,43 @@ describe('listResources', () => {
     }, 60_000);
 });
 
+describe('A-019: key material under a harmless name', () => {
+    let sandbox: string | null = null;
+    afterEach(async () => {
+        await cleanupSandbox(sandbox);
+        sandbox = null;
+    });
+
+    it('A-019: a PKCS#8 key as .der, a PKCS#12 file as .bin and a key PEM as .txt are neither listed nor served; a certificate .der still is', async () => {
+        sandbox = await makeSandbox();
+        await fs.copyFile(fixture('leaf.key.der'), path.join(sandbox, 'leaf.key.der'));
+        await fs.copyFile(fixture('leaf.key.pem'), path.join(sandbox, 'notes.txt'));
+        await fs.copyFile(fixture('leaf.key.enc.pem'), path.join(sandbox, 'enc.pem'));
+        await fs.copyFile(fixture('leaf.p12'), path.join(sandbox, 'bundle.bin'));
+        await fs.copyFile(fixture('plain-keybag.p12'), path.join(sandbox, 'plain.der'));
+        await fs.copyFile(fixture('leaf.crt.der'), path.join(sandbox, 'leaf.crt.der'));
+        await fs.copyFile(fixture('root.crt.pem'), path.join(sandbox, 'root.crt.pem'));
+        const listed = (await listResources()).map((r) => r.name).sort();
+        expect(listed).toEqual(['leaf.crt.der', 'root.crt.pem']);
+        for (const name of ['leaf.key.der', 'notes.txt', 'enc.pem', 'bundle.bin', 'plain.der']) {
+            let code = 'none';
+            let text = '';
+            try {
+                await readResource(`${RESOURCE_URI_PREFIX}${name}`);
+            } catch (err) {
+                code = err instanceof ToolError ? err.code : 'other';
+                text = String((err as Error).message);
+            }
+            expect(code, name).toBe('SECURITY_VIOLATION');
+            expect(text, name).toContain('inspect_private_key');
+            assertNoSecret(text, name);
+        }
+        const cert = await readResource(`${RESOURCE_URI_PREFIX}leaf.crt.der`);
+        expect(cert.blob).toBeDefined();
+        assertNoSecret(JSON.stringify(cert), 'certificate blob');
+    });
+});
+
 describe('readResource', () => {
     let sandbox: string | null = null;
 
@@ -222,11 +259,12 @@ describe('readResource', () => {
         for (const name of ['x.pem', 'enc.txt', 'notes.md']) {
             const err = await rejectionOf(readResource(`${RESOURCE_URI_PREFIX}${name}`));
             expect(err.code, name).toBe('SECURITY_VIOLATION');
-            expect(err.message, name).toContain('private-key PEM block');
+            expect(err.message, name).toContain('private-key material');
             assertNoSecret(JSON.stringify({ message: err.message, data: err.data }), name);
         }
         // The listing still shows the mislabelled files (a listing is not a read); the key-bearing extensions never appear.
-        expect((await listResources()).map((r) => r.name)).toEqual(['enc.txt', 'notes.md', 'x.pem']);
+        // A-019: key material under a harmless name is not even listed.
+        expect((await listResources()).map((r) => r.name)).toEqual([]);
     });
 
     it('OUTPUT_TOO_LARGE above the read cap, decided on the size before any read', async () => {

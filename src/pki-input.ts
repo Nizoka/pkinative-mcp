@@ -190,20 +190,53 @@ export function isSecretLabel(label: string | undefined): boolean {
  *
  * @throws {SecurityError} SECURITY_VIOLATION naming the remedy tool.
  */
-export function refuseSecretDer(der: Uint8Array, source: string, ctx: ParseContext, consequence: string): void {
-    const probe: PkiParseOptions = { ...ctx.options, ...createDiagnosticSink(false).options, encodingRules: 'ber', strict: false };
-    const parses = (fn: () => unknown): boolean => {
+const parses = (fn: () => unknown): boolean => {
+    try {
+        fn();
+        return true;
+    } catch {
+        return false;
+    }
+};
+
+/** 'pkcs8' when the DER parses as a PKCS#8 private key (plain or encrypted), 'pkcs12' for a PKCS#12 file, else null. */
+function secretKindOfDer(der: Uint8Array, probe: PkiParseOptions): 'pkcs8' | 'pkcs12' | null {
+    if (parses(() => parsePrivateKeyInfo(der, probe)) || parses(() => parseEncryptedPrivateKeyInfo(der, probe))) return 'pkcs8';
+    if (parses(() => parsePkcs12(der, probe))) return 'pkcs12';
+    return null;
+}
+
+/** A throwaway probe: BER-tolerant, non-strict, diagnostics discarded (they are not the caller's). */
+function probeOptions(base?: PkiParseOptions): PkiParseOptions {
+    return { ...(base ?? {}), ...createDiagnosticSink(false).options, encodingRules: 'ber', strict: false };
+}
+
+/**
+ * True when raw bytes hold key material in any form: DER that parses as a
+ * PKCS#8 key or a PKCS#12 file, or PEM text with a private-key label or a
+ * block whose DER parses as one. Used wherever bytes are served or listed
+ * by name only (resources), so a key under a harmless extension never leaves.
+ */
+export function isSecretMaterial(bytes: Uint8Array): boolean {
+    const probe = probeOptions();
+    if (looksLikePem(bytes)) {
+        let blocks: ReturnType<typeof decodePem>;
         try {
-            fn();
-            return true;
+            blocks = decodePem(new TextDecoder('utf-8', { fatal: false }).decode(bytes), probe);
         } catch {
             return false;
         }
-    };
-    if (parses(() => parsePrivateKeyInfo(der, probe)) || parses(() => parseEncryptedPrivateKeyInfo(der, probe))) {
+        return blocks.some((b) => isSecretLabel(b.label) || secretKindOfDer(b.bytes, probe) !== null);
+    }
+    return secretKindOfDer(bytes, probe) !== null;
+}
+
+export function refuseSecretDer(der: Uint8Array, source: string, ctx: ParseContext, consequence: string): void {
+    const probe = probeOptions(ctx.options);
+    if (secretKindOfDer(der, probe) === 'pkcs8') {
         throw new SecurityError(`${source} parses as a PKCS#8 private key: ${consequence}; describe it with inspect_private_key instead.`, { remedy: 'inspect_private_key' });
     }
-    if (parses(() => parsePkcs12(der, probe))) {
+    if (secretKindOfDer(der, probe) === 'pkcs12') {
         throw new SecurityError(`${source} parses as a PKCS#12 file: ${consequence}; describe it with inspect_pkcs12 instead.`, { remedy: 'inspect_pkcs12' });
     }
 }

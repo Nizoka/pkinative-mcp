@@ -23,6 +23,7 @@ import path from 'node:path';
 
 import { MAX_LISTED_RESOURCES, MAX_RESOURCE_READ_BYTES, MAX_RESOURCE_WALK_DEPTH as MAX_WALK_DEPTH } from './caps.js';
 import { SecurityError, ToolError } from './errors.js';
+import { isSecretMaterial } from './pki-input.js';
 import { assertRealpathInside, getOutputSandbox, isSecretPath, resolveSandboxPath } from './sandbox.js';
 
 /** URI scheme + authority for sandboxed resources. */
@@ -100,6 +101,25 @@ export function resourceLinkForPath(absPath: string): { uri: string; name: strin
     return { uri, name: relative, title: relative.split('/').pop() ?? relative, mimeType: mimeTypeFor(absPath) };
 }
 
+/**
+ * A file this small is sniffed by content before it is listed (A-019): a
+ * PKCS#8 key or a PKCS#12 file under a harmless extension (`leaf.key.der`,
+ * `bundle.bin`) is as secret as one named `.key`. Larger files cannot be a
+ * single key and are listed by name.
+ */
+const SECRET_SNIFF_MAX_BYTES = 4 * 1024 * 1024;
+
+async function holdsSecretMaterial(file: string): Promise<boolean> {
+    try {
+        const stat = await fs.stat(file);
+        if (!stat.isFile() || stat.size === 0 || stat.size > SECRET_SNIFF_MAX_BYTES) return false;
+        return isSecretMaterial(new Uint8Array(await fs.readFile(file)));
+        /* v8 ignore next 3 -- a file racing deletion between readdir and read is not listed. */
+    } catch {
+        return true;
+    }
+}
+
 async function walkFiles(sandbox: string, dir: string, depth: number, out: string[]): Promise<void> {
     if (depth > MAX_WALK_DEPTH || out.length >= MAX_LISTED_RESOURCES) return;
     let entries: Dirent[];
@@ -114,7 +134,7 @@ async function walkFiles(sandbox: string, dir: string, depth: number, out: strin
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) {
             await walkFiles(sandbox, full, depth + 1, out);
-        } else if (entry.isFile() && !isSecretPath(entry.name)) {
+        } else if (entry.isFile() && !isSecretPath(entry.name) && !(await holdsSecretMaterial(full))) {
             out.push(path.relative(sandbox, full));
         }
     }
@@ -187,12 +207,12 @@ export async function readResource(uri: string): Promise<ResourceContents> {
     await assertRealpathInside(resolved, 'resource path');
     const bytes = await fs.readFile(resolved);
     const mimeType = mimeTypeFor(resolved);
+    // A-019: the content decides, not the name — a PKCS#8 key or a PKCS#12 file under any extension is never served.
+    if (PRIVATE_KEY_LABEL.test(bytes.subarray(0, 4096).toString('latin1')) || isSecretMaterial(new Uint8Array(bytes))) {
+        throw new SecurityError('The resource holds private-key material (a PKCS#8 key or a PKCS#12 file) and is never served — describe it with inspect_private_key / inspect_pkcs12 instead.', { remedy: 'inspect_private_key' });
+    }
     if (TEXT_MIME.has(mimeType)) {
-        const text = bytes.toString('utf8');
-        if (PRIVATE_KEY_LABEL.test(text)) {
-            throw new SecurityError('The resource holds a private-key PEM block and is never served — open it with inspect_private_key instead.', { remedy: 'inspect_private_key' });
-        }
-        return { uri, mimeType, text };
+        return { uri, mimeType, text: bytes.toString('utf8') };
     }
     return { uri, mimeType, blob: bytes.toString('base64') };
 }
