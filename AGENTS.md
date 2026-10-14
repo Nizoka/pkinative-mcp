@@ -14,7 +14,7 @@ pkinative-mcp is the official Model Context Protocol server of the pkinative eng
 - **Faithful thin wrapper.** Every PKI operation lives in the engine; the server never parses DER or implements a signature and never over-promises
   (`describe_engine.refusals`). 117 / 117 runtime exports are reached by a named tool (`tests/coverage-matrix.test.ts`).
 - **Validate at the boundary.** Zod `.strict()` at every depth, in step with the advertised JSON Schema (`tests/schema-lockstep.test.ts`); every failure is one documented code.
-- **No network, ever.** No `fetch` / `http` / `https` / `net` / `dns` import outside `src/http.ts` (loopback listener). Revocation evidence and tokens are inputs;
+- **No network, ever.** No `fetch` / `https` / `dns` / socket code; `node:http` only in the loopback listener, `node:net` only for `isIPv4` / `isIPv6` (`tests/no-network.test.ts`). Evidence and tokens are inputs;
   no argument supplies a URL or an absolute path. File I/O stays under `PKINATIVE_MCP_OUTPUT_DIR` (`src/sandbox.ts`).
 - **No secret in any output.** Never log or echo a password, a key byte, a scalar or an operator secret; keys are non-extractable Web Crypto handles,
   every key / PKCS#12 report is an allow-list view (`src/key-views.ts`), `assertResultClean` guards every key-bearing result.
