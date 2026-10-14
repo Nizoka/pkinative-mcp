@@ -78,7 +78,6 @@ const CLI = join(REPO_ROOT, 'dist', 'cli.js');
 const SERVER_MODULE = join(REPO_ROOT, 'dist', 'server.js');
 const SERVER_JSON = join(REPO_ROOT, 'server.json');
 const FIXTURES = join(REPO_ROOT, 'tests', '_fixtures');
-const VERIFY_DOCS = join(REPO_ROOT, 'scripts', 'verify-docs.ts');
 
 export type Profile = 'fast' | 'ci' | 'publish';
 
@@ -106,10 +105,6 @@ export function lintersMissing(): string | null {
     const pkilint = [process.env['PKILINT_PYTHON'], 'python3', 'python', 'py'].some((p) => p !== undefined && ok(p, ['-c', 'import pkilint.bin.lint_pkix_cert']));
     const missing = [zlint ? null : 'zlint', pkilint ? null : 'pkilint'].filter((m): m is string => m !== null);
     return missing.length === 0 ? null : `${missing.join(' and ')} not found (ZLINT, PKILINT_PYTHON)`;
-}
-
-function verifyDocsMissing(): string | null {
-    return existsSync(VERIFY_DOCS) ? null : 'verify-docs.ts not present yet';
 }
 
 // ── Notes (figures shown next to PASS) ──────────────────────────────
@@ -387,7 +382,7 @@ export const STEPS: readonly Step[] = [
         id: 'test:coverage', npmScript: 'test:coverage', profiles: ['ci', 'publish'],
         env: { GATE: '1', GATE_REQUIRE_ARTIFACTS: '1' }, note: () => joinNotes(testCount(), coverageFigure()),
     },
-    { id: 'verify:docs', npmScript: 'verify:docs', profiles: ['fast', 'ci', 'publish'], skipWhen: verifyDocsMissing },
+    { id: 'verify:docs', npmScript: 'verify:docs', profiles: ['fast', 'ci', 'publish'] },
     { id: 'verify:samples', npmScript: 'verify:samples', profiles: ['ci', 'publish'] },
     { id: 'corpus:pki', npmScript: 'corpus:pki', profiles: ['ci', 'publish'], note: corpusCount },
     { id: 'validate:pki', npmScript: 'validate:pki', profiles: ['ci', 'publish'], env: { PKINATIVE_INTEROP_REQUIRED: '1' }, skipWhen: opensslMissing },
