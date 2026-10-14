@@ -82,6 +82,20 @@ describe('open_pkcs12', () => {
         });
     });
 
+    describe('A-039 / A-040: every PKCS#12 reason names the MCP remedy', () => {
+        it('A-039: the RSA-scheme reason names rsaScheme; A-040: the legacy and no-MAC reasons name the OpenSSL conversion', async () => {
+            const rsa = await callToolDirect('open_pkcs12', { pkcs12: fixtureInput('rsa.p12'), password: PASSWORD });
+            const rsaReasons = (rsa.structuredContent as { reasons: Array<{ code: string; message: string }> }).reasons;
+            expect(rsaReasons.find((r) => r.code === 'PKI_REASON_PKCS12_RSA_SCHEME_UNSPECIFIED')?.message).toContain("rsaScheme:'pkcs1' | 'pss'");
+            const legacy = await callToolDirect('open_pkcs12', { pkcs12: fixtureInput('legacy.p12'), password: PASSWORD });
+            const legacyReasons = (legacy.structuredContent as { reasons: Array<{ code: string; message: string }> }).reasons;
+            expect(legacyReasons.find((r) => r.code === 'PKI_REASON_PKCS12_ENCRYPTION_UNSUPPORTED')?.message).toContain('openssl pkcs12');
+            expect(legacyReasons.find((r) => r.code === 'PKI_REASON_PKCS12_INTEGRITY_UNVERIFIED')?.message).toContain('allowUnverifiedIntegrity');
+            assertResultClean(rsa);
+            assertResultClean(legacy);
+        });
+    });
+
     describe('negative verdicts are reports, never isError', () => {
         it('a wrong password: integrity mismatch, nothing decrypted, the password never echoed', async () => {
             const result = await callToolDirect('open_pkcs12', { pkcs12: p12('leaf.p12'), password: WRONG });

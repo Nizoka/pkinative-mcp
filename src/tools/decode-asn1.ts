@@ -198,7 +198,12 @@ export const DECODE_ASN1_OUTPUT_SCHEMA = {
 } as const;
 
 export const DECODE_ASN1_SUMMARY_PROPERTIES = {
-    rootTag: { type: 'string', description: 'tagName of the first node listed.' },
+    label: DECODE_ASN1_OUTPUT_SCHEMA.properties.label,
+    sizeBytes: DECODE_ASN1_OUTPUT_SCHEMA.properties.sizeBytes,
+    nodeCount: DECODE_ASN1_OUTPUT_SCHEMA.properties.nodeCount,
+    rootTag: { type: ['string', 'null'], description: 'tagName of the first node listed (null when nothing was listed).' },
+    truncated: DECODE_ASN1_OUTPUT_SCHEMA.properties.truncated,
+    value: DECODE_ASN1_OUTPUT_SCHEMA.properties.value,
     identical: { type: 'boolean', description: 'reencode: the bytes are identical.' },
     diagnosticCount: { type: 'integer' },
 } as const;

@@ -23,6 +23,7 @@ import { PROJECTION_INPUT_PROPERTIES } from '../projection.js';
 import { PASSWORD_INPUT_PROPERTY, PasswordSchema, resolvePassword, secretRequired } from '../secrets.js';
 import { REASONS_OUTPUT_PROPERTY } from '../trust.js';
 import { CERTIFICATE_REF_SCHEMA, certificateRef, reasonsView } from '../views.js';
+import { LEGACY_PKCS12_REMEDY, UNVERIFIED_INTEGRITY_REMEDY } from '../pki-errors.js';
 import { toHex } from '../wire.js';
 import { defineTool, PROJECTION_NOTE, projectableOutputSchema, WRITES } from './_definition.js';
 import { diagnosticCount, parseInput, ParseShape, ProjectionShape, sha256Hex, withDiagnostics } from './_shared.js';
@@ -197,7 +198,7 @@ export async function openPkcs12Tool(rawInput: unknown): Promise<OpenPkcs12Resul
     return withDiagnostics({
         valid: report.valid,
         integrity: report.integrity,
-        reasons: reasonsView(report.reasons),
+        reasons: reasonsView(report.reasons).map((r) => ({ ...r, message: withMcpRemedy(r['code'] ?? '', r['message'] ?? '') })),
         keys: report.keys.map(keyView),
         certificates: report.certificates.map(certificateRef),
         keyCount: report.keys.length,
@@ -206,6 +207,16 @@ export async function openPkcs12Tool(rawInput: unknown): Promise<OpenPkcs12Resul
         ...(input.exportCertificates && !report.valid ? { exportSkipped: true as const } : {}),
         ...(artefact !== undefined ? { artefact } : {}),
     }, ctx.sink.report());
+}
+
+/** The engine phrases a remedy in its own options; the agent needs the MCP input (A-039) or the OpenSSL conversion (A-040). */
+function withMcpRemedy(code: string, message: string): string {
+    switch (code) {
+        case 'PKI_REASON_PKCS12_RSA_SCHEME_UNSPECIFIED': return `${message} MCP: pass rsaScheme:'pkcs1' | 'pss' (and hash) to open_pkcs12.`;
+        case 'PKI_REASON_PKCS12_ENCRYPTION_UNSUPPORTED': return `${message} Remedy: ${LEGACY_PKCS12_REMEDY}.`;
+        case 'PKI_REASON_PKCS12_INTEGRITY_UNVERIFIED': return `${message} Remedy: ${UNVERIFIED_INTEGRITY_REMEDY}.`;
+        default: return message;
+    }
 }
 
 export function openPkcs12Summary(r: OpenPkcs12Result): Record<string, unknown> {

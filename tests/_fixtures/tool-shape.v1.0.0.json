@@ -1348,6 +1348,10 @@
     "value": {
      "type": "object",
      "additionalProperties": false,
+     "required": [
+      "type",
+      "value"
+     ],
      "properties": {
       "type": {
        "type": "string",
@@ -1382,6 +1386,10 @@
         {
          "type": "object",
          "additionalProperties": false,
+         "required": [
+          "hex",
+          "unusedBits"
+         ],
          "properties": {
           "hex": {
            "type": "string"
@@ -1396,6 +1404,10 @@
         {
          "type": "object",
          "additionalProperties": false,
+         "required": [
+          "stringType",
+          "value"
+         ],
          "properties": {
           "stringType": {
            "type": "string",
@@ -1418,6 +1430,12 @@
         {
          "type": "object",
          "additionalProperties": false,
+         "required": [
+          "type",
+          "epochMilliseconds",
+          "iso",
+          "text"
+         ],
          "properties": {
           "type": {
            "type": "string"
@@ -1533,7 +1551,10 @@
      "type": "boolean"
     },
     "rootTag": {
-     "type": "string"
+     "type": [
+      "string",
+      "null"
+     ]
     },
     "identical": {
      "type": "boolean"
