@@ -85,20 +85,19 @@ describe('prototype pollution', () => {
         expect(await call('inspect_certificate', { certificate: LEAF, verbosity: '__proto__' }, 'verbosity')).toBe('VALIDATION_ERROR');
     });
 
-    it('the loose spec objects: a poisoned certificate / CSR / X.509 / ASN.1 spec never pollutes, and is refused or ignored by the parser', async () => {
+    it('B-010: the loose spec objects — a poisoned certificate / CSR / X.509 / ASN.1 spec is REFUSED at every depth (never silently ignored) and never pollutes', async () => {
         const certSpec = withPoison({ subject: { CN: 'x' }, notBefore: AT });
-        const c1 = await call('create_certificate', { spec: certSpec, signer: ED }, 'certificate spec');
-        expect(c1 === null || c1 === 'VALIDATION_ERROR').toBe(true);
-        const c2 = await call('create_certificate', { spec: { subject: withPoison({ CN: 'x' }), notBefore: AT }, signer: ED }, 'subject');
-        expect(c2 === null || c2 === 'VALIDATION_ERROR').toBe(true);
-        const c3 = await call('create_certificate', { spec: { subject: { CN: 'x' }, notBefore: AT, extensions: withPoison({ basicConstraints: { ca: false } }) }, signer: ED }, 'extensions');
-        expect(c3 === null || c3 === 'VALIDATION_ERROR').toBe(true);
-        const c4 = await call('create_csr', { spec: withPoison({ subject: { CN: 'x' } }), signer: ED }, 'csr spec');
-        expect(c4 === null || c4 === 'VALIDATION_ERROR').toBe(true);
-        const c5 = await call('encode_x509_structure', { structure: 'name', spec: withPoison({ CN: 'x' }) }, 'x509 name spec');
-        expect(c5 === null || c5 === 'VALIDATION_ERROR').toBe(true);
-        const c6 = await call('encode_asn1', { spec: withPoison({ type: 'sequence', children: [withPoison({ type: 'null' })] }) }, 'asn1 spec');
-        expect(c6 === null || c6 === 'VALIDATION_ERROR').toBe(true);
+        expect(await call('create_certificate', { spec: certSpec, signer: ED }, 'certificate spec')).toBe('VALIDATION_ERROR');
+        expect(await call('create_certificate', { spec: { subject: withPoison({ CN: 'x' }), notBefore: AT }, signer: ED }, 'subject')).toBe('VALIDATION_ERROR');
+        expect(await call('create_certificate', { spec: { subject: { CN: 'x' }, notBefore: AT, extensions: withPoison({ basicConstraints: { ca: false } }) }, signer: ED }, 'extensions')).toBe('VALIDATION_ERROR');
+        expect(await call('create_csr', { spec: withPoison({ subject: { CN: 'x' } }), signer: ED }, 'csr spec')).toBe('VALIDATION_ERROR');
+        expect(await call('encode_x509_structure', { structure: 'name', spec: withPoison({ CN: 'x' }) }, 'x509 name spec')).toBe('VALIDATION_ERROR');
+        expect(await call('encode_asn1', { spec: withPoison({ type: 'sequence', children: [withPoison({ type: 'null' })] }) }, 'asn1 spec')).toBe('VALIDATION_ERROR');
+        expect(await call('encode_asn1', { spec: { type: 'sequence', children: [withPoison({ type: 'null' })] } }, 'asn1 nested')).toBe('VALIDATION_ERROR');
+        // A prototype key the JSON parser made an OWN property (the wire form) is named in the refusal.
+        const own = await callToolDirect('create_certificate', { spec: JSON.parse('{"subject":{"CN":"x"},"notBefore":"2027-01-01T00:00:00Z","__proto__":{"polluted":1}}'), signer: ED });
+        expect(errorCodeOf(own)).toBe('VALIDATION_ERROR');
+        expect((own.content[0] as { text: string }).text).toContain('$.spec.__proto__');
         const c7 = await call('encode_asn1', { spec: { type: '__proto__' } }, 'asn1 type');
         expect(c7).toBe('VALIDATION_ERROR');
     });

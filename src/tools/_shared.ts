@@ -25,7 +25,31 @@ export const AllowSha1Shape = {
 };
 
 /** Parse with a schema and convert a failure into `VALIDATION_ERROR` (the message names the path). */
+const PROTOTYPE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/** The JSON path of the first own prototype key anywhere in the raw input, or null (B-010). */
+export function findPrototypeKey(value: unknown, path = '$', depth = 0): string | null {
+    if (depth > 64 || value === null || typeof value !== 'object') return null;
+    if (Array.isArray(value)) {
+        for (const [i, v] of value.entries()) {
+            const hit = findPrototypeKey(v, `${path}[${i}]`, depth + 1);
+            if (hit !== null) return hit;
+        }
+        return null;
+    }
+    for (const key of Object.getOwnPropertyNames(value)) {
+        if (PROTOTYPE_KEYS.has(key)) return `${path}.${key}`;
+        const hit = findPrototypeKey((value as Record<string, unknown>)[key], `${path}.${key}`, depth + 1);
+        if (hit !== null) return hit;
+    }
+    return null;
+}
+
 export function parseInput<T>(schema: z.ZodType<T>, rawInput: unknown): T {
+    const prototypeKey = findPrototypeKey(rawInput);
+    if (prototypeKey !== null) {
+        throw new ToolError('VALIDATION_ERROR', `Invalid arguments: ${prototypeKey}: a prototype key (__proto__, constructor, prototype) is never accepted.`, { issues: [`${prototypeKey}: prototype key`] });
+    }
     const parsed = schema.safeParse(rawInput ?? {});
     if (!parsed.success) {
         const issues = parsed.error.issues.map((i) => `${i.path.length > 0 ? i.path.map(String).join('.') : '$'}: ${i.message}`);

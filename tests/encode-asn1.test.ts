@@ -167,6 +167,21 @@ describe('encode_asn1', () => {
         }
     });
 
+    describe('B-009: unknown members are refused at every depth', () => {
+        it.each([
+            ['top level', { type: 'null', bogus: 1 }, '$.bogus'],
+            ['a nested child', { type: 'sequence', children: [{ type: 'null', bogus: 1 }] }, '$.children[0].bogus'],
+            ['inside explicit', { type: 'explicit', tag: 0, inner: { type: 'integer', value: 1, hex: '00' } }, '$.inner.hex'],
+            ['a member of another type', { type: 'integer', value: 1, children: [] }, '$.children'],
+            ['a prototype key (refused before Zod, at the raw boundary)', JSON.parse('{"type":"null","__proto__":{"polluted":true}}'), '$.spec.__proto__'],
+        ])('B-009: %s → VALIDATION_ERROR naming the path', async (_label, spec, expectedPath) => {
+            const result = await callToolDirect('encode_asn1', { spec });
+            expect(errorCodeOf(result)).toBe('VALIDATION_ERROR');
+            const text = (result.content[0] as { text: string }).text;
+            expect(text).toContain(expectedPath);
+        });
+    });
+
     describe('refusals', () => {
         it.each([
             ['no spec', {}],

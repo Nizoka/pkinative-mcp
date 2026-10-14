@@ -57,6 +57,16 @@ const TAG_CLASSES: readonly TagClass[] = ['universal', 'application', 'context',
 const STRING_TYPES: readonly Asn1StringType[] = ['utf8', 'numeric', 'printable', 'teletex', 'ia5', 'visible', 'universal', 'bmp'];
 const TIME_TYPES = ['UTCTime', 'GeneralizedTime', 'rfc5280'] as const;
 
+/** The members each node type defines (besides `type`); anything else is refused by name (B-009). */
+const MEMBERS: Readonly<Record<(typeof ASN1_NODE_TYPES)[number], readonly string[]>> = {
+    boolean: ['value'], integer: ['value'], enumerated: ['value'], null: [],
+    'bit-string': ['hex', 'unusedBits'], 'named-bits': ['bits'], 'octet-string': ['hex'],
+    oid: ['value'], 'relative-oid': ['value'], string: ['stringType', 'value'], time: ['value', 'timeType'],
+    sequence: ['children'], set: ['children'], 'set-of': ['children'],
+    explicit: ['tag', 'class', 'inner'], implicit: ['tag', 'class', 'inner'],
+    tlv: ['class', 'tag', 'constructed', 'hex'], der: ['hex'],
+};
+
 function specError(path: string, message: string): ToolError {
     return new ToolError('VALIDATION_ERROR', `asn1 spec ${path}: ${message}`, { path });
 }
@@ -110,6 +120,12 @@ export function encodeSpec(root: unknown, ctx: ParseContext): Uint8Array {
         }
         if (!isSpec(spec)) throw specError(path, 'expected an object with a "type"');
         const type = field(spec, path, 'type', isString, 'a string');
+        if (Object.hasOwn(MEMBERS, type)) {
+            const allowed = MEMBERS[type as keyof typeof MEMBERS];
+            for (const key of Object.keys(spec)) {
+                if (key !== 'type' && !allowed.includes(key)) throw specError(`${path}.${key}`, `unknown member for type "${type}" (${['type', ...allowed].join(', ')})`);
+            }
+        }
         const children = (): Uint8Array[] => field(spec, path, 'children', isArray, 'an array').map((c, i) => visit(c, `${path}.children[${i}]`, depth + 1));
         const tagOptions = (): { tagClass: TagClass } => ({ tagClass: choiceField(spec, path, 'class', TAG_CLASSES, 'context') });
         return guard(`asn1 spec ${path}`, () => {
