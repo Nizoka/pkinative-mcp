@@ -15,7 +15,7 @@ For an agent calling the tools, the server teaches its own doctrine: `SERVER_INS
 
 For the repository, this release ships with the engineering standard of its siblings (pdfnative-mcp 1.7.0, zipnative-mcp 1.0.0): one quality gate (`scripts/gate.ts`, fast / ci / publish profiles, the built server driven over stdio with stdout purity enforced), OpenSSL 3 as the blocking external judge of every artefact the server writes, a sample baseline, a pinned catalogue under a size budget, docs as code (`docs/assets/ecosystem.json` + `npm run verify:docs`, 27 rules), a committed agent layer (settings, fail-closed guard hook on Bash and PowerShell, generated rules, the release-audit skill), hardened workflows with Trusted Publishing, SBOM and attestation, and `scripts/release-prepare.ts`.
 
-Counts (`docs/assets/ecosystem.json`): 34 tools, 7 prompts, 21 wrapper codes, 9 operator variables; 89 examples; 98 samples in the baseline (10 byte-exact, 3 `tbs`, 85 semantic); conformance corpus 23 + 5 corpus entries; 2263 tests across 106 files; 42 fixtures; 117 runtime exports reached 117 / 117.
+Counts (`docs/assets/ecosystem.json`): 34 tools, 7 prompts, 21 wrapper codes, 9 operator variables; 89 examples; 98 samples in the baseline (10 byte-exact, 3 `tbs`, 85 semantic); conformance corpus 23 + 5 corpus entries; 2263 tests across 107 files; 42 fixtures; 117 runtime exports reached 117 / 117.
 
 ## What changed
 
@@ -33,14 +33,14 @@ Counts (`docs/assets/ecosystem.json`): 34 tools, 7 prompts, 21 wrapper codes, 9 
 - `gate.ts` (fast / ci / publish, `--require-all`, inline `code-tables` / `dist-check` / `dist-probe` / `smoke` / `server-json`), `generate-samples.ts` + `verify-samples.ts` + `lib/sample-fingerprint.ts` (bytes / `tbs` / semantic modes), `generate-pki-corpus.ts` / `validate-pki.ts` + `lib/pki-corpus.ts` + `lib/interop-tools.ts` (levels 0 and 1, exit codes 0 / 1 / 2), `tool-shape.ts` + `lib/tool-shape.ts`, `verify-docs.ts` (27 rules: the 24 ported from pdfnative-mcp plus `no-secret-material`, `engine-data-parity`, `interop-counts`; `--json`, `--require-all`) + `lib/mcp-surface.ts` + `lib/secret-needles.ts`, `release-prepare.ts`, `build-claude-rules.ts`, `verify-issue.mjs`, `build-code-tables.mjs`; `scripts/README.md`.
 
 ### CI / repository (`.github/`, root)
-- Eleven workflows (`ci` on ubuntu Node 22 / 24 plus windows and macos running the gate `--ci --require-all`, `interop` on four legs and blocking on ubuntu-24.04 and windows, `sample-regression`, `publish` with the protected `npm-publish` environment, tag = version check, SBOM + attestation, `docs`, `codeql`, `scorecard`, `dependency-review`, `audit`, `node-current`); `harden-runner`, `persist-credentials: false`, `npm ci --ignore-scripts`, one SHA per action; `.github/rulesets/{main,tags}.json`; Dependabot; `CODEOWNERS`; the PR template mirrored in CONTRIBUTING; the issue templates.
+- Ten workflows (`ci` on ubuntu Node 22 / 24 plus windows and macos running the gate `--ci --require-all`, `interop` on four legs and blocking on ubuntu-24.04 and windows, `sample-regression`, `publish` with the protected `npm-publish` environment, tag = version check, SBOM + attestation, `docs`, `codeql`, `scorecard`, `dependency-review`, `audit`, `node-current`); `harden-runner`, `persist-credentials: false`, `npm ci --ignore-scripts`, one SHA per action; `.github/rulesets/{main,tags}.json`; Dependabot; `CODEOWNERS`; the PR template mirrored in CONTRIBUTING; the issue templates.
 - `.nvmrc` / `.node-version` (22), `.gitattributes` (LF), `.githooks/` + `hooks:install`, `tsconfig.scripts.json`, vitest under `TZ=UTC` with forks and the gate reporter; three runtime dependencies (`pkinative`, `@modelcontextprotocol/server`, `zod`); version lock-step (`package.json`, `src/version.ts`, `server.json` ×2, `CITATION.cff`).
 
 ### Agent layer
 - `AGENTS.md` (repository rules), `CLAUDE.md` = `@AGENTS.md` + addendum, `docs/AGENT_CONTRACT.md` (§1 catalogue … §6 error reference — the consumer contract), `.claude/settings.json` (no commit attribution, Read denies, HITL denies for Bash and PowerShell), `.claude/hooks/guard.mjs`, `.claude/rules/` generated from `.github/instructions/`, `.claude/skills/release-audit/`, `.github/prompts/`, `.github/ai-governance.json`, `.github/AGENT_RULES.md`, `.github/copilot-instructions.md`.
 
 ### Tests, examples and samples
-- 106 test files (2263 tests), among them `autonomy` (S0–S18 over stdio / HTTP × legacy / 2026-07-28), `secret-leak`, `pki-fuzz`, `prototype-pollution`, `coverage-matrix` (117 / 117 runtime exports), `schema-lockstep`, `schema-conformance`, `catalogue-parity`, `examples`, `cache-policy`, `protocol-revisions`, `diagnostics-inventory` (2 diagnostics from the fixtures, 30 from hand-built values, 65 listed as not reachable with the fixtures and why), `error-codes` (every wrapper code exercised, every `PKI_*` code reached or listed with the reason), `docs-consistency`, `tests/interop/*`, `tests/tools/*`.
+- 107 test files (2263 tests), among them `autonomy` (S0–S18 over stdio / HTTP × legacy / 2026-07-28), `secret-leak`, `pki-fuzz`, `prototype-pollution`, `coverage-matrix` (117 / 117 runtime exports), `schema-lockstep`, `schema-conformance`, `catalogue-parity`, `examples`, `cache-policy`, `protocol-revisions`, `diagnostics-inventory` (2 diagnostics from the fixtures, 30 from hand-built values, 65 listed as not reachable with the fixtures and why), `error-codes` (every wrapper code exercised, every `PKI_*` code reached or listed with the reason), `docs-consistency`, `tests/interop/*`, `tests/tools/*`.
 - 89 examples under `examples/` executed by `tests/examples.test.ts`; 98 samples in `tests/_fixtures/samples.sha256.json`; 42 OpenSSL-made TEST-ONLY fixtures pinned by `SHA256SUMS` (password `test-only-password`), never regenerated in place.
 
 ### Documentation
@@ -53,7 +53,7 @@ What actually ran on the release branch (Windows 11, Node 22, OpenSSL 3.5.5). Ev
 | Command | Result |
 |---|---|
 | `PKINATIVE_INTEROP_REQUIRED=1 npx tsx scripts/gate.ts --ci --require-all` | every step PASS, none skipped (the publish profile adds `lint:certs`; zlint and pkilint are installed by `publish.yml`, not on the dev host) |
-| `npm run test` | 106 files, 2263 tests (2249 passed, 14 skipped) |
+| `npm run test` | 107 files, 2263 tests (2249 passed, 14 skipped) |
 | `npm run test:coverage` — coverage | 98.45 / 91.97 / 99.45 / 99.03 (statements / branches / functions / lines), thresholds 94 / 90 / 95 / 94 |
 | `npm run build && npm run test:generate && npm run verify:samples` | 98 samples in the baseline (10 byte-exact, 3 `tbs`, 85 semantic); `--strict`: 98 tracked samples match |
 | `npm run corpus:pki && npm run validate:pki` | 23 PASS, 5 REFUSED, 0 FAIL, 0 XPASS, 0 SKIP — 57 engine checks, 30 OpenSSL checks, OpenSSL 3.5.5 |

@@ -201,7 +201,7 @@ All 9 operator variables are declared in `server.json`, read **once at boot**; a
 
 **Privacy / network policy:** no telemetry; **no network code path exists** — no CRL, OCSP, AIA or TSA fetch, no GitHub, no URL taken from any argument, no operator-configurable endpoint. Bytes only ever flow back in the JSON-RPC response (or into the sandbox). Passwords and key bytes never reach a message, `_meta.error.data`, stderr, a cache file or a resource (the secret-leak suite holds it with needles computed from the fixtures).
 
-**Protocol:** MCP 2026-07-28 (stateless, `server/discover`, the `_meta` `serverInfo` envelope, `resultType`, `ttlMs` / `cacheScope` hints, `Mcp-Method` / `Mcp-Name` headers over HTTP) on the MCP TypeScript SDK v2 (`@modelcontextprotocol/server` ^2.0.0), with automatic fallback to the legacy `initialize` handshake for 2024-10-07, 2024-11-05, 2025-03-26, 2025-06-18 and 2025-11-25 clients on stdio and HTTP. Cache hints: `tools/list` and `prompts/list` public 24 h, `server/discover` public 1 h, `resources/*` private, `ttlMs: 0`. A `tools/call` naming an unknown tool is a JSON-RPC protocol error (`-32602`, `[UNKNOWN_TOOL] Unknown tool: …`), not an `isError` result. Every tool carries `_meta.apiVersion` (`1.0.0`) and ≤ 2 executable `_meta.examples`. `tools/list` measures 427,106 bytes (budget 448 KiB); `serverInfo.instructions` 5,469 bytes (budget 8 KiB).
+**Protocol:** MCP 2026-07-28 (stateless, `server/discover`, the `_meta` `serverInfo` envelope, `resultType`, `ttlMs` / `cacheScope` hints, `Mcp-Method` / `Mcp-Name` headers over HTTP) on the MCP TypeScript SDK v2 (`@modelcontextprotocol/server` ^2.0.0), with automatic fallback to the legacy `initialize` handshake for 2024-10-07, 2024-11-05, 2025-03-26, 2025-06-18 and 2025-11-25 clients on stdio and HTTP. Cache hints: `tools/list` and `prompts/list` public 24 h, `server/discover` public 1 h, `resources/*` private, `ttlMs: 0`. A `tools/call` naming an unknown tool is a JSON-RPC protocol error (`-32602`, `[UNKNOWN_TOOL] Unknown tool: …`), not an `isError` result. Every tool carries `_meta.apiVersion` (`1.0.0`) and ≤ 2 executable `_meta.examples`. `tools/list` measures 427,850 bytes (budget 448 KiB); `serverInfo.instructions` 5,469 bytes (budget 8 KiB).
 
 ## 5. Recipes
 
@@ -403,7 +403,7 @@ Passed through verbatim from pkinative 1.0.0 (frozen vocabulary: removal or rena
 
 ### 6.3 Verdict reasons (43 `PKI_REASON_*`)
 
-Returned in `reasons[]` (`{ code, message, remedy, path?, … }`) of a verdict tool — never thrown, never `isError`. `verbosity: 'summary'` keeps them as `reasonCodes[]`.
+Returned in `reasons[]` (`{ code, message, standard, path, errorCode?, limit? }`) of a verdict tool — never thrown, never `isError`. The remedy of a reason comes from `explain_code` (and `open_pkcs12` appends the MCP remedy to its PKCS#12 reasons). `verbosity: 'summary'` keeps them as `reasonCodes[]`.
 
 | `code` | Returned when | Remedy |
 |---|---|---|

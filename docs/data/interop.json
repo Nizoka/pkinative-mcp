@@ -48,5 +48,10 @@
         "ts -query -text prints the Nonce of the time-stamp requests"
       ]
     }
-  ]
+  ],
+  "measuredWith": {
+    "openssl": "3.5.5",
+    "date": "2026-10-14",
+    "host": "Windows 11, Node 22"
+  }
 }

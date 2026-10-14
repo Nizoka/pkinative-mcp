@@ -10,7 +10,7 @@
 
 MCP server bridging pkinative 1.0.0 (pinned `^1.0.0`) to AI clients over stdio or Streamable
 HTTP, on the MCP TypeScript SDK v2 (`@modelcontextprotocol/server`, MCP 2026-07-28 with automatic
-2025-era fallback). 34 tools in five groups (certificates, paths, CMS / time-stamps, keys, encodings), the 22
+2025-era fallback). 34 tools in six groups (certificates, paths, CMS / time-stamps, keys, encodings), the 22
 `PkiLimits` bounds by name, nine `PKINATIVE_MCP_*` operator variables. Current release 1.0.0
 (`TOOL_API_VERSION` 1.0.0). Three runtime dependencies (pkinative, the MCP SDK, zod) — never add one.
 Quality bar: production-grade OSS (strict TypeScript, strong validation, secure file IO, **no network, ever**,

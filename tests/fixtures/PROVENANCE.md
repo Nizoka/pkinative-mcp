@@ -7,7 +7,7 @@ any of it, so a defect cannot be baked into both a fixture and its reading.
 The files are never regenerated in place; re-running the script makes new keys,
 which are new fixtures with new checksums.
 
-[`SHA256SUMS`](SHA256SUMS) pins every file; `tests/docs/fixtures.test.ts` fails
+[`SHA256SUMS`](SHA256SUMS) pins every file; `tests/fixtures.test.ts` fails
 on a changed checksum, a missing file or an unlisted one.
 
 **Every private key here is public TEST-ONLY material** (`*.key.pem`,

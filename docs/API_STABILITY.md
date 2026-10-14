@@ -59,7 +59,7 @@ A bump of `_meta.apiVersion` happens **only** in the cases listed in §3 — and
 > `$ref` / `$defs` (`tests/schema-lockstep.test.ts`), which is why every shared fragment —
 > the PKI input, the signer, the trust fragment, the parse fragment with its 22 named
 > limits, the projection inputs, the diagnostics report — is repeated inline, and
-> `tools/list` weighs **427,106 bytes**, under a **448 KiB budget** enforced by
+> `tools/list` weighs **427,850 bytes**, under a **448 KiB budget** enforced by
 > `scripts/tool-shape.ts --check` (gate step `verify:tool-shape`, §5).
 
 ---
@@ -146,7 +146,7 @@ All 34 tools shipped through pkinative-mcp 1.0.0 are at `_meta.apiVersion = '1.0
 > command groups of pkinative-cli 1.0.0 (`docs/data/core-exports.json` `via`), so an agent
 > that knows one surface reads the other.
 >
-> **Catalogue budget (448 KiB).** `tools/list` measures 427,106 bytes and
+> **Catalogue budget (448 KiB).** `tools/list` measures 427,850 bytes and
 > `serverInfo.instructions` 5,469 bytes; `scripts/tool-shape.ts --check` fails above
 > 448 KiB / 8 KiB and when `declared.toolsListBytes` of `docs/assets/ecosystem.json` drifts
 > more than 2 % from the measurement. The budget is 448 KiB for 34 tools where
