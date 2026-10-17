@@ -9,7 +9,9 @@ import path from 'node:path';
 
 import { contentInputSchema, ContentInputSchema, HEX_PATTERN, hexSchema, HexSchema, loadContent } from '../src/content-input.js';
 import { ToolError } from '../src/errors.js';
-import { fixtureBytes, fixtureText } from './_pki-fixtures.js';
+import { callToolDirect } from '../src/server.js';
+import { assertResultClean, errorCodeOf } from './_pki-assert.js';
+import { fixture as fixtureBytesPath, fixtureBytes, fixtureText } from './_pki-fixtures.js';
 import { cleanupSandbox, makeSandbox } from './_sandbox.js';
 
 async function rejectionOf(p: Promise<unknown>): Promise<ToolError> {
@@ -94,6 +96,41 @@ describe('loadContent', () => {
         expect(err.code).toBe('SECURITY_VIOLATION');
         expect(err.message).toContain('PKINATIVE_MCP_OUTPUT_DIR');
         expect((await loadContent({ text: 'x' }, 'content')).source).toBe('text');
+    });
+});
+
+describe('A2-043: the content read from the sandbox is never a key', () => {
+    let sandbox: string | null = null;
+    afterEach(async () => {
+        await cleanupSandbox(sandbox);
+        sandbox = null;
+    });
+
+    it('A2-043: a key-bearing name, a key under a harmless name and a key behind a prefix are SECURITY_VIOLATION on loadContent and on sign_cms / create_timestamp_request', async () => {
+        sandbox = await makeSandbox();
+        await fs.copyFile(fixtureBytesPath('leaf.key.pem'), path.join(sandbox, 'signer.key'));
+        await fs.writeFile(path.join(sandbox, 'notes.txt'), `notes\n${'x'.repeat(300)}\n${fixtureText('leaf.key.pem')}`);
+        await fs.writeFile(path.join(sandbox, 'blob.bin'), Buffer.concat([Buffer.alloc(32, 0x41), Buffer.from(fixtureBytes('leaf.key.der'))]));
+        await fs.writeFile(path.join(sandbox, 'plain.txt'), 'the quick brown fox');
+        for (const name of ['signer.key', 'notes.txt', 'blob.bin']) {
+            let code = 'none';
+            let text = '';
+            try {
+                await loadContent({ path: name }, 'content');
+            } catch (err) {
+                code = err instanceof ToolError ? err.code : 'other';
+                text = String((err as Error).message);
+            }
+            expect(code, name).toBe('SECURITY_VIOLATION');
+            expect(text, name).toContain('inspect_private_key');
+        }
+        expect((await loadContent({ path: 'plain.txt' }, 'content')).source).toBe('plain.txt');
+        const signed = await callToolDirect('sign_cms', { content: { path: 'notes.txt' }, certificate: { pem: fixtureText('leaf.crt.pem') }, signingTime: '2027-01-01T00:00:00Z', signer: { key: { pem: fixtureText('leaf.key.pem') } } });
+        expect(errorCodeOf(signed)).toBe('SECURITY_VIOLATION');
+        assertResultClean(signed);
+        const stamped = await callToolDirect('create_timestamp_request', { data: { path: 'signer.key' } });
+        expect(errorCodeOf(stamped)).toBe('SECURITY_VIOLATION');
+        assertResultClean(stamped);
     });
 });
 

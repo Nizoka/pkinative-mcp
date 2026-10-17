@@ -211,24 +211,80 @@ function probeOptions(base?: PkiParseOptions): PkiParseOptions {
     return { ...(base ?? {}), ...createDiagnosticSink(false).options, encodingRules: 'ber', strict: false };
 }
 
-/**
- * True when raw bytes hold key material in any form: DER that parses as a
- * PKCS#8 key or a PKCS#12 file, or PEM text with a private-key label or a
- * block whose DER parses as one. Used wherever bytes are served or listed
- * by name only (resources), so a key under a harmless extension never leaves.
- */
-export function isSecretMaterial(bytes: Uint8Array): boolean {
-    const probe = probeOptions();
-    if (looksLikePem(bytes)) {
-        let blocks: ReturnType<typeof decodePem>;
-        try {
-            blocks = decodePem(new TextDecoder('utf-8', { fatal: false }).decode(bytes), probe);
-        } catch {
-            return false;
+export type SecretKind = 'pkcs8' | 'pkcs12' | 'private-key-pem';
+
+/** The exact DER value that starts at `offset` (short or long-form length), or null when the header is not a DER SEQUENCE. */
+function derValueAt(bytes: Uint8Array, offset: number): Uint8Array | null {
+    if (bytes[offset] !== 0x30) return null;
+    const first = bytes[offset + 1];
+    if (first === undefined) return null;
+    let length = 0;
+    let header = 2;
+    if (first < 0x80) {
+        length = first;
+    } else {
+        const octets = first & 0x7f;
+        if (octets === 0 || octets > 4) return null;
+        for (let i = 0; i < octets; i++) {
+            const b = bytes[offset + 2 + i];
+            if (b === undefined) return null;
+            length = length * 256 + b;
         }
-        return blocks.some((b) => isSecretLabel(b.label) || secretKindOfDer(b.bytes, probe) !== null);
+        header = 2 + octets;
     }
-    return secretKindOfDer(bytes, probe) !== null;
+    const end = offset + header + length;
+    if (end > bytes.length) return null;
+    return bytes.subarray(offset, end);
+}
+
+const ARMOURED_BLOCK = /-----BEGIN ([A-Z0-9 ]+)-----([\s\S]*?)-----END \1-----/g;
+const ARMOUR_HEADER = /-----BEGIN ([A-Z0-9 ]+)-----/g;
+const BASE64_RUN = /[A-Za-z0-9+/]{64,}={0,2}/g;
+/** How far into a buffer an embedded DER key is looked for (a key is never larger; a prefix is never longer). */
+const EMBEDDED_SCAN_BYTES = 64 * 1024;
+
+/**
+ * Key material anywhere in raw bytes, found by CONTENT (A2-040 / A2-042 /
+ * A2-043): an armoured block at any position (not only at byte 0, any
+ * number of blocks, no engine limit) with a private-key label or a body that
+ * parses as a PKCS#8 key or a PKCS#12 file; the whole buffer as DER; a DER
+ * key behind a prefix (every SEQUENCE header in the first 64 KiB); an
+ * unarmoured base64 run that decodes to one. Returns the kind found, or
+ * null. Used wherever bytes are served, wrapped or embedded by name only.
+ */
+export function findSecretMaterial(bytes: Uint8Array): SecretKind | null {
+    const probe = probeOptions();
+    const text = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('latin1');
+    if (text.includes('-----BEGIN ')) {
+        for (const m of text.matchAll(ARMOUR_HEADER)) if (isSecretLabel(m[1])) return 'private-key-pem';
+        for (const m of text.matchAll(ARMOURED_BLOCK)) {
+            const body = Buffer.from((m[2] ?? '').replace(/[^A-Za-z0-9+/=]/g, ''), 'base64');
+            if (body.length > 16) {
+                const kind = secretKindOfDer(new Uint8Array(body), probe);
+                if (kind !== null) return kind;
+            }
+        }
+    }
+    const whole = secretKindOfDer(bytes, probe);
+    if (whole !== null) return whole;
+    for (const m of text.matchAll(BASE64_RUN)) {
+        const kind = secretKindOfDer(new Uint8Array(Buffer.from(m[0], 'base64')), probe);
+        if (kind !== null) return kind;
+    }
+    const limit = Math.min(bytes.length - 1, EMBEDDED_SCAN_BYTES);
+    for (let i = 1; i < limit; i++) {
+        if (bytes[i] !== 0x30) continue;
+        const value = derValueAt(bytes, i);
+        if (value === null || value.length < 32) continue;
+        const kind = secretKindOfDer(value, probe);
+        if (kind !== null) return kind;
+    }
+    return null;
+}
+
+/** True when raw bytes hold key material in any form (see {@link findSecretMaterial}). */
+export function isSecretMaterial(bytes: Uint8Array): boolean {
+    return findSecretMaterial(bytes) !== null;
 }
 
 export function refuseSecretDer(der: Uint8Array, source: string, ctx: ParseContext, consequence: string): void {

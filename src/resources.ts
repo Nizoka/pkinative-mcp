@@ -23,7 +23,7 @@ import path from 'node:path';
 
 import { MAX_LISTED_RESOURCES, MAX_RESOURCE_READ_BYTES, MAX_RESOURCE_WALK_DEPTH as MAX_WALK_DEPTH } from './caps.js';
 import { SecurityError, ToolError } from './errors.js';
-import { isSecretMaterial } from './pki-input.js';
+import { findSecretMaterial, isSecretMaterial } from './pki-input.js';
 import { assertRealpathInside, getOutputSandbox, isSecretPath, resolveSandboxPath } from './sandbox.js';
 
 /** URI scheme + authority for sandboxed resources. */
@@ -168,8 +168,6 @@ export async function listResources(): Promise<ResourceDescriptor[]> {
     return descriptors;
 }
 
-const PRIVATE_KEY_LABEL = /-----BEGIN (?:[A-Z0-9 ]+ )?PRIVATE KEY(?: BLOCK)?-----/;
-
 /**
  * Read a `pkinative://output/<relative>` resource. PEM / Markdown / JSON /
  * text come back as `text`, everything else as a base64 `blob`. Re-validates
@@ -207,9 +205,11 @@ export async function readResource(uri: string): Promise<ResourceContents> {
     await assertRealpathInside(resolved, 'resource path');
     const bytes = await fs.readFile(resolved);
     const mimeType = mimeTypeFor(resolved);
-    // A-019: the content decides, not the name — a PKCS#8 key or a PKCS#12 file under any extension is never served.
-    if (PRIVATE_KEY_LABEL.test(bytes.subarray(0, 4096).toString('latin1')) || isSecretMaterial(new Uint8Array(bytes))) {
-        throw new SecurityError('The resource holds private-key material (a PKCS#8 key or a PKCS#12 file) and is never served — describe it with inspect_private_key / inspect_pkcs12 instead.', { remedy: 'inspect_private_key' });
+    // A-019 / A2-040: the content decides, not the name — key material anywhere in the file (an armoured
+    // block at any position, a DER key behind a prefix, a base64 run) is never served.
+    const secret = findSecretMaterial(new Uint8Array(bytes));
+    if (secret !== null) {
+        throw new SecurityError(`The resource holds private-key material (${secret}) and is never served — describe it with inspect_private_key / inspect_pkcs12 instead.`, { kind: secret, remedy: 'inspect_private_key' });
     }
     if (TEXT_MIME.has(mimeType)) {
         return { uri, mimeType, text: bytes.toString('utf8') };

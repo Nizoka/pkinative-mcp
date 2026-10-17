@@ -9,13 +9,16 @@
 import { promises as fs } from 'node:fs';
 import { z } from 'zod';
 
+import { decodeAsn1 } from 'pkinative';
+
 import { decodeDerBase64 } from '../base64.js';
 import { assertInputWithin } from '../caps.js';
 import { DIAGNOSTICS_OUTPUT_PROPERTIES, type DiagnosticsReport } from '../diagnostics.js';
 import { SecurityError, ToolError } from '../errors.js';
 import { ARTEFACT_OUTPUT_PROPERTIES, emitArtefact, outputInputProperties, outputShape, type ArtefactEncoding } from '../output.js';
 import { createParseContext, PARSE_INPUT_PROPERTIES, type ParseContext } from '../parse-context.js';
-import { decodePemBlocks, isSecretLabel, LABELS, looksLikePem, pkiInputSchema, PkiInputSchema, refuseSecretDer, type PkiInputFields } from '../pki-input.js';
+import { guard } from '../pki-errors.js';
+import { decodePemBlocks, isSecretLabel, isSecretMaterial, LABELS, looksLikePem, pkiInputSchema, PkiInputSchema, refuseSecretDer, type PkiInputFields } from '../pki-input.js';
 import { PROJECTION_INPUT_PROPERTIES } from '../projection.js';
 import { PKI_INPUT_EXTENSIONS, resolveInputFile } from '../sandbox.js';
 import { defineTool, PROJECTION_NOTE, projectableOutputSchema, WRITES, type ArtefactAttachment } from './_definition.js';
@@ -231,7 +234,13 @@ async function encode(input: z.infer<typeof InputSchema>, ctx: ParseContext): Pr
     if (looksLikePem(bytes)) {
         throw new ToolError('VALIDATION_ERROR', `input (${source}) is already PEM text: encode wraps DER bytes — decode it with mode:'decode' (extractIndex delivers a block as DER).`, { path: 'input', remedy: "mode:'decode'" });
     }
+    // A2-042: exactly one DER value is wrapped (a prefix or trailing bytes are a PKI_ASN1_* refusal), and
+    // nothing that holds key material anywhere in it.
+    guard(`Cannot read input (${source}) as one DER value`, () => decodeAsn1(bytes, ctx.options));
     refuseSecretDer(bytes, `input (${source})`, ctx, 'a PEM block would carry private-key bytes under any label');
+    if (isSecretMaterial(bytes)) {
+        throw new SecurityError(`input (${source}) holds private-key material: this server never wraps, extracts or serves a private key.`, { remedy: 'inspect_private_key' });
+    }
     const artefact = await emitArtefact(bytes, {
         mode: input.outputMode,
         encoding: 'pem',

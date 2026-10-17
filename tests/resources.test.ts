@@ -201,6 +201,43 @@ describe('A-019: key material under a harmless name', () => {
     });
 });
 
+describe('A2-040 / A2-041: key material found by content, wherever it sits', () => {
+    let sandbox: string | null = null;
+    afterEach(async () => {
+        await cleanupSandbox(sandbox);
+        sandbox = null;
+    });
+
+    it('A2-040: a key after a prefix, among ten thousand blocks, behind binary junk or as a bare base64 run is neither listed nor served', async () => {
+        sandbox = await makeSandbox();
+        const keyPem = fixtureText('leaf.key.pem');
+        const keyDer = fixtureBytes('leaf.key.der');
+        const junk = 'x'.repeat(5000);
+        await fs.writeFile(path.join(sandbox, 'junk-then-key.crt'), `${junk}\n${keyPem}`);
+        await fs.writeFile(path.join(sandbox, 'junk-then-key.txt'), `notes\n${junk}\n${keyPem}`);
+        const filler = '-----BEGIN DATA-----\nAAAA\n-----END DATA-----\n'.repeat(10_001);
+        await fs.writeFile(path.join(sandbox, 'many-blocks-key.pem'), `${filler}${keyPem}`);
+        await fs.writeFile(path.join(sandbox, 'binary-prefix-key.der'), Buffer.concat([Buffer.alloc(100, 0x41), Buffer.from(keyDer)]));
+        await fs.writeFile(path.join(sandbox, 'bare-base64.txt'), `token: ${Buffer.from(keyDer).toString('base64')}\n`);
+        await fs.copyFile(fixture('leaf.crt.der'), path.join(sandbox, 'leaf.crt.der'));
+        expect((await listResources()).map((r) => r.name)).toEqual(['leaf.crt.der']);
+        for (const name of ['junk-then-key.crt', 'junk-then-key.txt', 'many-blocks-key.pem', 'binary-prefix-key.der', 'bare-base64.txt']) {
+            let code = 'none';
+            let text = '';
+            try {
+                await readResource(`${RESOURCE_URI_PREFIX}${name}`);
+            } catch (err) {
+                code = err instanceof ToolError ? err.code : 'other';
+                text = String((err as Error).message);
+            }
+            expect(code, name).toBe('SECURITY_VIOLATION');
+            assertNoSecret(text, name);
+        }
+        const cert = await readResource(`${RESOURCE_URI_PREFIX}leaf.crt.der`);
+        assertNoSecret(JSON.stringify(cert), 'certificate blob');
+    });
+});
+
 describe('readResource', () => {
     let sandbox: string | null = null;
 

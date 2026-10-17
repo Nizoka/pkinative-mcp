@@ -163,6 +163,25 @@ describe('convert_pem', () => {
         });
     });
 
+    describe('A2-042: encode wraps one DER value and never key material', () => {
+        it('A2-042: a key behind a text or binary prefix, or any bytes that are not one DER value, are refused and never wrapped', async () => {
+            const keyPem = fixtureText('leaf.key.pem');
+            const keyDer = fixtureBytes('leaf.key.der');
+            const cases: Array<[string, Uint8Array]> = [
+                ['text prefix then a PEM key', new TextEncoder().encode(`${'x'.repeat(300)}\n${keyPem}`)],
+                ['binary prefix then a DER key', new Uint8Array(Buffer.concat([Buffer.alloc(64, 0x41), Buffer.from(keyDer)]))],
+                ['a certificate followed by a DER key', new Uint8Array(Buffer.concat([Buffer.from(fixtureBytes('leaf.crt.der')), Buffer.from(keyDer)]))],
+            ];
+            for (const [label, bytes] of cases) {
+                const result = await callToolDirect('convert_pem', { mode: 'encode', input: { derBase64: Buffer.from(bytes).toString('base64') }, label: 'CERTIFICATE' });
+                expect(result.isError, label).toBe(true);
+                expect(errorCodeOf(result), label).toMatch(/^(SECURITY_VIOLATION|PKI_ASN1_[A-Z_]+)$/);
+                expect(result.content.some((c) => c.type === 'resource'), label).toBe(false);
+                assertResultClean(result, label);
+            }
+        });
+    });
+
     describe('refusals', () => {
         it.each([
             ['no mode', { input: fixtureInput('leaf.crt.pem') }],
