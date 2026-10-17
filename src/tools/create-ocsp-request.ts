@@ -20,6 +20,7 @@ import { randomNonceBytes } from '../random.js';
 import { dn } from '../views.js';
 import { toHex } from '../wire.js';
 import { defineTool, PRODUCES } from './_definition.js';
+import { MAX_PEM_LABEL_LENGTH, PEM_LABEL_PATTERN, assertProducibleLabel } from './convert-pem.js';
 import { parseInput, ParseShape, withDiagnostics } from './_shared.js';
 import { nonceBytes } from './verify-certificate-chain.js';
 
@@ -43,6 +44,7 @@ export const CREATE_OCSP_REQUEST_INPUT_SCHEMA = {
             description: "The RFC 8954 nonce extension: 'random', or hex of 1–32 bytes. Omitted: no nonce. Keep summary.nonceHex to match the response (check_ocsp_status nonce).",
         },
         certIdOnly: { type: 'boolean', default: false, description: 'Return the bare DER CertID (RFC 6960 §4.1.1) instead of the request (der or hex only — a CertID has no PEM label).' },
+        label: { type: 'string', minLength: 1, maxLength: MAX_PEM_LABEL_LENGTH, pattern: PEM_LABEL_PATTERN, description: "The PEM label for encoding:'pem' (default OCSP REQUEST; upper-case words and digits). A private-key label is refused." },
         ...PARSE_INPUT_PROPERTIES,
         ...outputInputProperties('der', '.orq .der .bin for der'),
     },
@@ -54,6 +56,7 @@ const InputSchema = z.strictObject({
     hashAlgorithm: z.enum(OCSP_HASH_ALGORITHMS).default('SHA-1'),
     nonce: z.union([z.literal('random'), HexSchema]).optional(),
     certIdOnly: z.boolean().default(false),
+    label: z.string().min(1).max(MAX_PEM_LABEL_LENGTH).regex(new RegExp(PEM_LABEL_PATTERN)).optional(),
     ...ParseShape,
     ...outputShape('der'),
 });
@@ -114,11 +117,12 @@ export async function createOcspRequestTool(rawInput: unknown): Promise<CreateOc
     const der = input.certIdOnly
         ? certId
         : guard('Cannot create the OCSP request', () => createOcspRequest(certificate, issuer, { hashAlgorithm: input.hashAlgorithm, ...(nonce !== undefined ? { nonce } : {}) }));
+    if (input.label !== undefined) assertProducibleLabel(input.label, 'label');
     const artefact = await emitArtefact(der, {
         mode: input.outputMode,
         encoding: input.encoding,
         outputPath: input.outputPath,
-        pemLabel: 'OCSP REQUEST',
+        pemLabel: input.label ?? 'OCSP REQUEST',
         mimeType: 'application/ocsp-request',
         derExtensions: ['.orq', '.der', '.bin'],
     });

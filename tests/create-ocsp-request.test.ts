@@ -134,6 +134,16 @@ describe('create_ocsp_request', () => {
         });
     });
 
+    describe('B2-043: the PEM label', () => {
+        it('B2-043: label names the PEM block of a pem artefact; a private-key label is SECURITY_VIOLATION', async () => {
+            const ok = await callToolDirect('create_ocsp_request', { certificate: fixtureInput('leaf.crt.pem'), issuer: fixtureInput('inter.crt.pem'), nonce: '0a0b', encoding: 'pem', label: 'MY OCSP REQUEST' });
+            expect(ok.isError).not.toBe(true);
+            const block = ok.content.find((c) => c.type === 'resource') as { resource: { text?: string } };
+            expect(block.resource.text).toContain('-----BEGIN MY OCSP REQUEST-----');
+            expect(errorCodeOf(await callToolDirect('create_ocsp_request', { certificate: fixtureInput('leaf.crt.pem'), issuer: fixtureInput('inter.crt.pem'), encoding: 'pem', label: 'EC PRIVATE KEY' }))).toBe('SECURITY_VIOLATION');
+        });
+    });
+
     describe('refusals', () => {
         it.each([
             ['nothing', {}],

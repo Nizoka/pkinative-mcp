@@ -24,6 +24,7 @@ import { DIAGNOSTICS_OUTPUT_PROPERTIES, type DiagnosticsReport } from '../diagno
 import { createParseContext, PARSE_INPUT_PROPERTIES } from '../parse-context.js';
 import { guard } from '../pki-errors.js';
 import { PROJECTION_INPUT_PROPERTIES } from '../projection.js';
+import { LABELS, loadPkiObject, pkiInputSchema, PkiInputSchema } from '../pki-input.js';
 import { fromHex, toHex } from '../wire.js';
 import { defineTool, PROJECTION_NOTE, projectableOutputSchema, READ_ONLY } from './_definition.js';
 import { diagnosticCount, parseInput, ParseShape, ProjectionShape, withDiagnostics } from './_shared.js';
@@ -49,6 +50,7 @@ export const RESOLVE_OID_INPUT_SCHEMA = {
         form: { type: 'string', enum: [...FORMS], default: 'content', description: "encode / decode: 'content' (the base-128 content octets only) or 'tlv' (tag + length + content, i.e. the whole DER value)." },
         relative: { type: 'boolean', default: false, description: "encode / decode: a RELATIVE-OID (X.690 §8.20, universal tag 13) instead of an OBJECT IDENTIFIER — needs form:'tlv' (the engine encodes a relative OID as a whole TLV only)." },
         hex: hexSchema('decode: the octets to decode (content octets, or the whole TLV with form:\'tlv\').'),
+        input: pkiInputSchema('decode: the encoded OBJECT IDENTIFIER as a whole DER TLV (or any PEM block holding one)', ' Exclusive with hex; implies form:\'tlv\'.'),
         ...PARSE_INPUT_PROPERTIES,
         ...PROJECTION_INPUT_PROPERTIES,
     },
@@ -63,14 +65,17 @@ const InputSchema = z.strictObject({
     form: z.enum(FORMS).default('content'),
     relative: z.boolean().default(false),
     hex: HexSchema.optional(),
+    input: PkiInputSchema.optional(),
     ...ParseShape,
     ...ProjectionShape,
 }).superRefine((v, ctx) => {
     const needsOids = v.mode === 'name' || v.mode === 'validate' || v.mode === 'encode';
     if (needsOids && v.oids === undefined) ctx.addIssue({ code: 'custom', message: `oids is required for mode '${v.mode}'`, path: ['oids'] });
     if (!needsOids && v.oids !== undefined) ctx.addIssue({ code: 'custom', message: 'oids applies to name / validate / encode', path: ['oids'] });
-    if (v.mode === 'decode' && v.hex === undefined) ctx.addIssue({ code: 'custom', message: "hex is required for mode 'decode'", path: ['hex'] });
+    if (v.mode === 'decode' && v.hex === undefined && v.input === undefined) ctx.addIssue({ code: 'custom', message: "hex or input is required for mode 'decode'", path: ['hex'] });
+    if (v.mode === 'decode' && v.hex !== undefined && v.input !== undefined) ctx.addIssue({ code: 'custom', message: 'pass hex or input, not both', path: ['input'] });
     if (v.mode !== 'decode' && v.hex !== undefined) ctx.addIssue({ code: 'custom', message: 'hex applies to decode', path: ['hex'] });
+    if (v.mode !== 'decode' && v.input !== undefined) ctx.addIssue({ code: 'custom', message: 'input applies to decode', path: ['input'] });
     if (v.mode !== 'list' && v.filter !== undefined) ctx.addIssue({ code: 'custom', message: 'filter applies to list', path: ['filter'] });
     const codec = v.mode === 'encode' || v.mode === 'decode';
     if (!codec && v.relative) ctx.addIssue({ code: 'custom', message: 'relative applies to encode / decode', path: ['relative'] });
@@ -167,10 +172,13 @@ export async function resolveOid(rawInput: unknown): Promise<ResolveOidResult> {
             return report({ oids: rows });
         }
         case 'decode': {
-            const bytes = fromHex(input.hex ?? '') ?? new Uint8Array(0);
+            // B2-044: a whole TLV may come from a PKI input (a DER file or a PEM block) instead of hex.
+            const fromInput = input.input !== undefined ? (await loadPkiObject(input.input, 'input', LABELS.any, ctx)).der : undefined;
+            const bytes = fromInput ?? fromHex(input.hex ?? '') ?? new Uint8Array(0);
+            const form = fromInput !== undefined ? 'tlv' : input.form;
             const opts = ctx.options;
             const oid = guard('Cannot decode the OID', () => {
-                if (input.form === 'content') return decodeOid(bytes, opts);
+                if (form === 'content') return decodeOid(bytes, opts);
                 const node = decodeAsn1(bytes, opts);
                 return input.relative ? readRelativeOid(node, opts) : readObjectIdentifier(node, opts);
             });

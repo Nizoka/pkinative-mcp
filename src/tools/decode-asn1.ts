@@ -40,7 +40,7 @@ import { TIME_VIEW_SCHEMA, timeView } from '../views.js';
 import { toHex, type Wire } from '../wire.js';
 import { defineTool, PROJECTION_NOTE, projectableOutputSchema, READ_ONLY, type ArtefactAttachment } from './_definition.js';
 import { diagnosticCount, parseInput, ParseShape, ProjectionShape, withDiagnostics } from './_shared.js';
-import { ARTEFACT_ATTACHMENT_SCHEMA, mimeTypeForLabel } from './convert-pem.js';
+import { ARTEFACT_ATTACHMENT_SCHEMA, MAX_PEM_LABEL_LENGTH, PEM_LABEL_PATTERN, assertProducibleLabel, mimeTypeForLabel } from './convert-pem.js';
 
 export const DECODE_ASN1_NAME = 'decode_asn1';
 
@@ -78,7 +78,8 @@ export const DECODE_ASN1_INPUT_SCHEMA = {
         read: { type: 'string', enum: [...READ_TYPES], description: 'Apply this typed reader to the selected node (the root without nodePath) and return `value`; a wrong tag is PKI_ASN1_UNEXPECTED_TAG.' },
         stringType: { type: 'string', enum: [...STRING_TYPES], description: "read:'string' on an IMPLICIT-tagged node: the charset to decode with (required then — PKI_API_MISUSE otherwise)." },
         timeType: { type: 'string', enum: [...TIME_TYPES], description: "read:'time' on an IMPLICIT-tagged node: the time type (required then)." },
-        reencode: { type: 'boolean', default: false, description: 'Re-encode the selected node through the engine encoder and deliver it as an artefact (`encoding` der by default, hex, or pem for a labelled whole input); `reencode.identical` says whether the bytes are the input bytes.' },
+        reencode: { type: 'boolean', default: false, description: 'Re-encode the selected node through the engine encoder and deliver it as an artefact (`encoding` der by default, hex, or pem under the input label or `label`); `reencode.identical` says whether the bytes are the input bytes.' },
+        label: { type: 'string', minLength: 1, maxLength: MAX_PEM_LABEL_LENGTH, pattern: PEM_LABEL_PATTERN, description: "reencode + encoding:'pem': the PEM label of the artefact (required when the input had no label or nodePath selects a sub-node; upper-case words and digits). A private-key label is refused." },
         allowTrailingData: { type: 'boolean', default: false, description: 'Accept bytes after the outermost value instead of PKI_ASN1_TRAILING_DATA (single value only; sequence:true decodes them instead).' },
         maxPreviewBytes: { type: 'integer', minimum: 0, maximum: 256, default: MAX_PREVIEW_BYTES, description: `Content bytes of a primitive shown in \`preview\` (hex; 0 hides previews; default ${MAX_PREVIEW_BYTES}).` },
         ...PARSE_INPUT_PROPERTIES,
@@ -95,6 +96,7 @@ const InputSchema = z.strictObject({
     stringType: z.enum(STRING_TYPES).optional(),
     timeType: z.enum(TIME_TYPES).optional(),
     reencode: z.boolean().default(false),
+    label: z.string().min(1).max(MAX_PEM_LABEL_LENGTH).regex(new RegExp(PEM_LABEL_PATTERN)).optional(),
     allowTrailingData: z.boolean().default(false),
     maxPreviewBytes: z.number().int().min(0).max(256).default(MAX_PREVIEW_BYTES),
     ...ParseShape,
@@ -323,15 +325,18 @@ export async function decodeAsn1Tool(rawInput: unknown): Promise<DecodeAsn1Resul
     } else if (input.reencode) {
         const der = guard('Cannot re-encode the node', () => encodeAsn1Node(node));
         const identical = der.byteLength === node.bytes.byteLength && der.every((b, i) => b === node.bytes[i]);
-        if (input.encoding === 'pem' && (obj.label === undefined || input.nodePath !== undefined)) {
-            throw new ToolError('VALIDATION_ERROR', "encoding:'pem' re-emits a whole labelled PEM input: this input has no label or nodePath selects a sub-node — use encoding:'der' or 'hex'.", { path: 'encoding', remedy: "encoding:'der'" });
+        const wholeLabelled = obj.label !== undefined && input.nodePath === undefined;
+        const pemLabel = input.label ?? (wholeLabelled ? obj.label : undefined);
+        if (input.encoding === 'pem' && pemLabel === undefined) {
+            throw new ToolError('VALIDATION_ERROR', "encoding:'pem' needs a label: this input has no PEM label or nodePath selects a sub-node — pass label, or use encoding:'der' or 'hex'.", { path: 'label', remedy: 'label' });
         }
+        if (input.label !== undefined) assertProducibleLabel(input.label, 'label');
         artefact = await emitArtefact(der, {
             mode: input.outputMode,
             encoding: input.encoding,
             outputPath: input.outputPath,
-            pemLabel: obj.label ?? '',
-            mimeType: obj.label !== undefined && input.nodePath === undefined ? mimeTypeForLabel(obj.label) : 'application/octet-stream',
+            pemLabel: pemLabel ?? '',
+            mimeType: pemLabel !== undefined ? mimeTypeForLabel(pemLabel) : 'application/octet-stream',
             derExtensions: ['.der', '.bin', '.asn1'],
         });
         reencode = { identical };

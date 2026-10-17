@@ -17,6 +17,7 @@ import { guard } from '../pki-errors.js';
 import { randomNonceInteger } from '../random.js';
 import { fromHex, toHex } from '../wire.js';
 import { defineTool, PRODUCES } from './_definition.js';
+import { MAX_PEM_LABEL_LENGTH, PEM_LABEL_PATTERN, assertProducibleLabel } from './convert-pem.js';
 import { parseInput, ParseShape, withDiagnostics } from './_shared.js';
 
 export const CREATE_TIMESTAMP_REQUEST_NAME = 'create_timestamp_request';
@@ -36,6 +37,7 @@ export const CREATE_TIMESTAMP_REQUEST_INPUT_SCHEMA = {
         nonce: { type: 'string', pattern: NONCE_PATTERN, description: "A nonce the TSA must echo (RFC 3161 §2.4.1): 'random' (63 bits from node:crypto — summary.randomNonce reports it; such a call is never cached), a decimal or an 0x-hex integer. Without one, nothing ties a response to THIS request." },
         policy: { type: 'string', pattern: OID_PATTERN, description: 'The TSA policy to issue under (dotted OID); the TSA\'s default when absent.' },
         certReq: { type: 'boolean', default: true, description: 'Ask the TSA to include its certificate in the token (what verify_timestamp needs unless you pass candidates).' },
+        label: { type: 'string', minLength: 1, maxLength: MAX_PEM_LABEL_LENGTH, pattern: PEM_LABEL_PATTERN, description: "The PEM label for encoding:'pem' (default TIMESTAMP REQUEST; upper-case words and digits). A private-key label is refused." },
         ...PARSE_INPUT_PROPERTIES,
         ...outputInputProperties('der', '.tsq .der .bin for der; .pem for pem'),
     },
@@ -48,6 +50,7 @@ const InputSchema = z.strictObject({
     nonce: z.string().regex(new RegExp(NONCE_PATTERN)).optional(),
     policy: z.string().regex(new RegExp(OID_PATTERN)).optional(),
     certReq: z.boolean().default(true),
+    label: z.string().min(1).max(MAX_PEM_LABEL_LENGTH).regex(new RegExp(PEM_LABEL_PATTERN)).optional(),
     ...ParseShape,
     ...outputShape('der'),
 }).superRefine((v, ctx) => {
@@ -120,11 +123,12 @@ export async function createTimestampRequestTool(rawInput: unknown): Promise<Cre
         ...(input.policy !== undefined ? { policy: input.policy } : {}),
         certReq: input.certReq,
     }));
+    if (input.label !== undefined) assertProducibleLabel(input.label, 'label');
     const artefact = await emitArtefact(der, {
         mode: input.outputMode,
         encoding: input.encoding,
         outputPath: input.outputPath,
-        pemLabel: 'TIMESTAMP REQUEST',
+        pemLabel: input.label ?? 'TIMESTAMP REQUEST',
         mimeType: 'application/timestamp-query',
         derExtensions: ['.tsq', '.der', '.bin'],
     });

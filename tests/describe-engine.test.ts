@@ -15,6 +15,14 @@ import { cleanupSandbox, makeSandbox } from './_sandbox.js';
 
 const ENV = ['PKINATIVE_MCP_MAX_INPUT_BYTES', 'PKINATIVE_MCP_MAX_KDF_ITERATIONS', 'PKINATIVE_MCP_MAX_PATHS_EXPLORED'] as const;
 
+describe('B2-042: the host-side key derivation is announced', () => {
+    it('B2-042: the no-key-export refusal names the node:crypto public-key derivation of a plain signer', async () => {
+        const r = await callToolDirect('describe_engine', {});
+        const refusals = (r.structuredContent as { refusals: Array<{ what: string; how: string }> }).refusals;
+        expect(refusals.find((x) => x.what === 'No key export')?.how).toContain('createPublicKey');
+    });
+});
+
 describe('describe_engine', () => {
     let sandbox: string | null = null;
 

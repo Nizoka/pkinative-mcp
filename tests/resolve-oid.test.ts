@@ -101,6 +101,18 @@ describe('resolve_oid', () => {
         });
     });
 
+    describe('B2-044: decode from a PKI input', () => {
+        it('B2-044: input (derBase64 / pem) decodes a whole TLV; hex and input together are refused', async () => {
+            const tlv = Buffer.from('0603550403', 'hex');
+            const r = await resolveOid({ mode: 'decode', input: { derBase64: tlv.toString('base64') } });
+            expect(r).toMatchObject({ mode: 'decode', oid: '2.5.4.3', name: 'commonName' });
+            const pem = `-----BEGIN OID-----\n${tlv.toString('base64')}\n-----END OID-----\n`;
+            expect(await resolveOid({ mode: 'decode', input: { pem } })).toMatchObject({ oid: '2.5.4.3' });
+            expect(await codeOf(resolveOid({ mode: 'decode', hex: '550403', input: { derBase64: tlv.toString('base64') } }))).toBe('VALIDATION_ERROR');
+            expect(await codeOf(resolveOid({ mode: 'name', oids: ['2.5.4.3'], input: { derBase64: tlv.toString('base64') } }))).toBe('VALIDATION_ERROR');
+        });
+    });
+
     describe('projection', () => {
         it('summary keeps mode, count and the scalars of the mode', async () => {
             expect(resolveOidSummary(await resolveOid({ mode: 'name', oids: ['2.5.4.3', '2.5.4.6'] }))).toEqual({ mode: 'name', count: 2, diagnosticCount: 0 });

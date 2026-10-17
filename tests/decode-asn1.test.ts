@@ -198,6 +198,17 @@ describe('decode_asn1', () => {
         });
     });
 
+    describe('B2-043: the PEM label of a re-encoded artefact', () => {
+        it('B2-043: label lets a DER input or a sub-node be re-emitted as PEM; a private-key label is refused', async () => {
+            const sub = await callToolDirect('decode_asn1', { input: fixtureInput('leaf.crt.der'), nodePath: '0.1', reencode: true, encoding: 'pem', label: 'ALGORITHM IDENTIFIER' });
+            expect(sub.isError).not.toBe(true);
+            const block = sub.content.find((c) => c.type === 'resource') as { resource: { text?: string } };
+            expect(block.resource.text).toContain('-----BEGIN ALGORITHM IDENTIFIER-----');
+            expect(errorCodeOf(await callToolDirect('decode_asn1', { input: fixtureInput('leaf.crt.der'), reencode: true, encoding: 'pem' }))).toBe('VALIDATION_ERROR');
+            expect(errorCodeOf(await callToolDirect('decode_asn1', { input: fixtureInput('leaf.crt.der'), reencode: true, encoding: 'pem', label: 'PRIVATE KEY' }))).toBe('SECURITY_VIOLATION');
+        });
+    });
+
     describe('refusals', () => {
         it.each([
             ['no input', {}],
