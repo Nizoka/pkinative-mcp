@@ -105,7 +105,8 @@ proves nothing (`VALIDATION_ERROR` otherwise). Then the TSA's signature, its cer
 chain to one of **your** `trustAnchors` (through `candidates` and the certificates the token
 carries) at `at` with a **critical** timeStamping EKU (`allowNonCriticalTimeStampingEku: true`
 for deployed TSAs that are not — RFC 3161 §2.3 requires it critical), and revocation from
-the `crls` / `ocspResponses` you supply (`requireRevocation: true` demands evidence).
+the `crls` / `ocspResponses` you supply (`requireRevocation: true` demands evidence for the
+TSA's end-entity certificate; its intermediates are judged from what you pass).
 `genTime` / `earliest` / `latest` (accuracy applied) are established only when `valid`.
 
 ```jsonc

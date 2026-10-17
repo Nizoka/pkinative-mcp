@@ -10,12 +10,16 @@ server-side recipe is the `open_keys_safely` prompt; using a key to sign is in
 
 ## TL;DR — describe first, open second, export never
 
+"None" below means no `password` input **and** `PKINATIVE_MCP_PASSWORD` unset: the variable
+counts as the password of every password-accepting tool, and with it set the describe calls
+open the file instead (a legacy `.p12` is then `PKI_KEY_MAC_UNSUPPORTED` rather than described).
+
 | Question | Tool | Password | Returns |
 | --- | --- | --- | --- |
 | What is this key, and what protects it? | `inspect_private_key { key }` | none | format, kind, curve, algorithm, the PBES2 parameters of an encrypted key |
 | Is this encrypted key usable with this password? | `inspect_private_key { key, tryImport: true, password, keyType }` | yes | `imported`: the non-extractable handle described (type, algorithm, usages) |
 | What is in this `.p12`, and how is it protected? | `inspect_pkcs12 { pkcs12 }` | none | version, MAC construction, every SafeContents with its scheme, the bags of the plain ones |
-| Does the password fit, and what does every bag hold? | `inspect_pkcs12 { pkcs12, password }` | yes | `macVerified` (a report, not an error), `opened` — every bag as an allow-list view |
+| Does the password fit, and what does every bag hold? | `inspect_pkcs12 { pkcs12, password }` | yes | `macVerified` and `opened` — every bag as an allow-list view; a wrong password on an encrypted SafeContents is `PKI_CRYPTO_DECRYPTION_FAILED` (`macVerified: false` is reported only when nothing is encrypted) |
 | Open it: MAC, decryption, key import, certificates | `open_pkcs12 { pkcs12, password, exportCertificates }` | yes | the verdict (`valid`, `integrity`, `reasons[]`), keys as handles, certificates (+ a PEM bundle), CRL count |
 
 Worked examples: [`inspect-private-key-describe.json`](../../examples/inspect-private-key-describe.json),
@@ -30,9 +34,9 @@ Worked examples: [`inspect-private-key-describe.json`](../../examples/inspect-pr
 [`open-pkcs12-no-password.json`](../../examples/open-pkcs12-no-password.json).
 
 ```jsonc
-// Describe without a password
+// Describe without a password (PKINATIVE_MCP_PASSWORD unset — the variable counts as one)
 { "tool": "inspect_private_key", "arguments": { "key": { "path": "fixtures/leaf.key.enc.pem" } } }
-// → { format: "encrypted-pkcs8", encrypted: true, encryption: { scheme: "pbes2", algorithm, pbes2: { iterations, prf, keyBits, cipher, saltBytes } }, encryptedBytes, … }
+// → { format: "encrypted-pkcs8", encrypted: true, encryption: { scheme: "PBES2 (PBKDF2 with HMAC-SHA-256, AES-256-CBC)", algorithm, pbes2: { iterations, prf, keyBits, cipher, saltBytes } }, encryptedBytes, … }
 { "tool": "inspect_pkcs12", "arguments": { "pkcs12": { "path": "fixtures/leaf.p12" }, "verbosity": "summary" } }
 // → { macKind: "pbmac1", contentCount, bagKinds: [...], diagnosticCount }
 // Prove an encrypted EC key is usable (the key never leaves the engine)
@@ -41,7 +45,7 @@ Worked examples: [`inspect-private-key-describe.json`](../../examples/inspect-pr
   "fields": ["imported", "encryption.scheme"] } }
 // Open a .p12 and export its certificate chain as PEM
 { "tool": "open_pkcs12", "arguments": { "pkcs12": { "path": "fixtures/leaf.p12" }, "password": "test-only-password", "exportCertificates": true } }
-// → { valid: true, integrity: "verified", keys: [{ algorithm, key: { type, algorithm, extractable: false, usages } }], certificates: [...], keyCount, certificateCount, crlCount }
+// → { valid: true, integrity: "verified", keys: [{ path, friendlyName, localKeyId, certificate: { subject, issuer, serialNumber, notAfter }, signingKey: { algorithm, key: { type, algorithm, extractable: false, usages } } }], certificates: [...], keyCount, certificateCount, crlCount }
 //   + an embedded PEM resource holding the certificates (then the CRLs) — never a key
 ```
 

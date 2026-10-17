@@ -2,6 +2,8 @@
 paths:
   - "tests/**"
   - "vitest.config.ts"
+  - "scripts/**"
+  - "examples/**"
 ---
 <!-- GENERATED from .github/instructions/testing.instructions.md by scripts/build-claude-rules.ts — do not edit -->
 
@@ -32,6 +34,17 @@ paths:
 - `tests/catalogue-parity.test.ts` compares the live `tools/list` structure with `tests/_fixtures/tool-shape.json`. After a deliberate schema change: `npm run build && npx tsx scripts/tool-shape.ts --write`, then review the fixture diff. Never refresh it to silence an accidental change.
 - `tests/_fixtures/tool-shape.v1.0.0.json` is the frozen baseline: no tool / property / enum value removed, no new `required`, no tighter bound. Never regenerate it.
 - `tests/schema-lockstep.test.ts` holds the JSON Schema and the Zod twin together; `tests/metadata.test.ts` holds the version lock-step and the nine env vars of `server.json`; `tests/governance.test.ts` asserts `src/governance.ts` and `scripts/verify-issue.mjs` stay aligned.
+
+## Samples and the byte baseline
+- `npm run build && npm run test:generate` drives the BUILT server (`scripts/generate-samples.ts`) over every hermetic `examples/*.json` under the hermetic env (`TZ=UTC`, every `PKINATIVE_MCP_*` scrubbed, then `PKINATIVE_MCP_AT=2027-01-01T00:00:00Z` and a temporary sandbox holding the fixtures) and writes `test-output/samples/`; `npm run verify:samples` (`scripts/verify-samples.ts`) compares the set with `tests/_fixtures/samples.sha256.json`. The baseline is a chain: an unchanged entry keeps its `since`.
+- Three fingerprint modes (`scripts/lib/sample-fingerprint.ts`), chosen per sample and recorded in the manifest: `bytes` (SHA-256 of the artefact — deterministic signers Ed25519 / RSA PKCS#1 v1.5, requests, encodings), `tbs` (the signed part only — ECDSA / RSA-PSS signatures are randomised), `semantic` (a canonical projection — reports, verdicts and artefacts drawn with `'random'`). A sample moved from `bytes` to `tbs` or `semantic` hides a byte change: diff the mode column, and prove a non-repeatable sample with a double run first (`npx tsx scripts/verify-samples.ts --strict` fails on an unbaselined sample).
+- An intended output change is rebaselined with `npx tsx scripts/verify-samples.ts --update`, explained in the manifest's `provenance` note and declared in the release note (its `since` moves to that release). Never `--update` to silence a surprise; a default artefact's bytes changing for the same deterministic inputs is semver-major.
+- Changing an example's `arguments` (a projection, a pin, a fixture) changes its sample: expect `verify:samples` to flag it and declare the rebaseline with the example change.
+
+## Conformance corpus
+- `npm run corpus:pki` drives the BUILT server (`scripts/generate-pki-corpus.ts`, the table in `scripts/lib/pki-corpus.ts`) under the pinned instant and writes `test-output/pki/` with its `manifest.json`; `npm run validate:pki` (`scripts/validate-pki.ts`) checks every entry at level 0 (in-process engine round trip through `dist/server.js`, always runs) and level 1 (OpenSSL 3.x on PATH or `OPENSSL_BIN`; LibreSSL and OpenSSL < 3.0 are refused with the reason). Exit codes 0 / 1 (an expectation not met, an XPASS, no canary, the coverage canary) / 2 (corpus or `dist/` missing) / 3 (OpenSSL required but absent).
+- Every new entry bumps `declared.conformant` or `declared.refused` in `docs/data/interop.json` (the coverage canary) and gets a row in `docs/guides/CONFORMANCE.md`; a `deterministic: true` entry is produced twice and must hash the same. Negative canaries (`expectRefused`) must stay refused: a canary that writes bytes is an XPASS and fatal. A known engine limit is a tracked canary, not a dropped entry.
+- Level 1 is never silently skipped: absent OpenSSL exits 0 locally with the reason, but `PKINATIVE_INTEROP_REQUIRED=1` (every CI leg) and the gate's `--require-all` turn the skip into a failure. The vitest form is `tests/interop/openssl.test.ts`; the linters (`tests/interop/lint.test.ts`, zlint + pkilint) run on the publish profile with the reviewed waivers under `scripts/data/`.
 
 ## Test focus and naming
 - Validate tool success AND error paths (`isError`, `[CODE]` in the text, `_meta.error.code`), schema constraints (unknown keys at any depth → `VALIDATION_ERROR`; `pem` XOR `derBase64` XOR `path`), sandbox protections (`tests/sandbox.test.ts`: traversal, absolute / UNC paths, NUL bytes, extension allow-list, symlinked parent or file, never-overwrite, key-bearing names refused on write, file I/O disabled when the env var is unset), the ceilings (`tests/limits.test.ts`: each of the 22 limits bounded by its ceiling), the cache gate (`tests/cache-policy.test.ts`), stdout purity.

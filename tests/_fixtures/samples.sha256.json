@@ -164,7 +164,7 @@
     "create-certificate-issue-leaf.step1.crt": {
       "mode": "tbs",
       "hash": "3037a57e9c73bf336e0fd5ff90d2bd1d13ee9d1589a36e4930dfa9f7df7391ee",
-      "size": 472,
+      "size": 471,
       "since": "1.0.0"
     },
     "create-certificate-self-signed-ca.json": {
@@ -206,7 +206,7 @@
     "create-csr-round-trip.step1.csr": {
       "mode": "tbs",
       "hash": "633110eece208168e2be7b77fabf285f0aea65427597c5f70d687c8b8c152356",
-      "size": 352,
+      "size": 353,
       "since": "1.0.0"
     },
     "create-ocsp-request.der": {
@@ -530,7 +530,7 @@
     "sign-cms-detached-then-verify.step1.p7s": {
       "mode": "semantic",
       "hash": "03a741b9ed1cf2b5f5049997b23674234eaeb81a6f96d7e9efe9556c72d04751",
-      "size": 1725,
+      "size": 1726,
       "since": "1.0.0"
     },
     "validate-certificate-path-structure-only.json": {
@@ -553,8 +553,8 @@
     },
     "verify-certificate-chain-revoked.json": {
       "mode": "semantic",
-      "hash": "18d29bcdd1613acd09e90165fa106ce22db65c666ed1fc30c13fb596a4525916",
-      "size": 504,
+      "hash": "6232d960c0bd90df57563f6c414251b878832bb201abda673d09518feb4f3138",
+      "size": 345,
       "since": "1.0.0"
     },
     "verify-certificate-chain-server.json": {

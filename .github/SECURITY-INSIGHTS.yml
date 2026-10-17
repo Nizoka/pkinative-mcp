@@ -89,9 +89,10 @@ repository:
           gate, secret-leak needle tests over every key and password result,
           OpenSSL 3 interoperability on four runner images (interop.yml) and
           hostile-input tests at the tools/call boundary. The server contains
-          no network code path, generates no key and never writes or serves a
-          key-bearing file. There is no coverage-guided fuzzing and no
-          third-party audit.
+          no network code path, generates no key and never writes a
+          key-bearing file; resources/read refuses key material by content,
+          not by name. There is no coverage-guided fuzzing and no third-party
+          audit.
         evidence: https://github.com/Nizoka/pkinative-mcp/blob/main/SECURITY.md
     tools:
       - name: CodeQL

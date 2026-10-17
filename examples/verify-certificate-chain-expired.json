@@ -1,5 +1,5 @@
 {
-    "description": "The same chain evaluated after the leaf expired: valid false with PKI_REASON_CERTIFICATE_EXPIRED — pin 'at' and the verdict is reproducible and cacheable.",
+    "description": "The same chain evaluated after the leaf expired: valid false with PKI_REASON_EXPIRED — pin 'at' and the verdict is reproducible and cacheable.",
     "tool": "verify_certificate_chain",
     "arguments": {
         "leaf": { "path": "fixtures/leaf.crt.pem" },

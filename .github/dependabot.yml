@@ -47,3 +47,18 @@ updates:
       - ci
     commit-message:
       prefix: "chore(ci):"
+
+  # The hash-pinned pkilint environment of the publish profile (lint:certs):
+  # scripts/data/lint-python-requirements.txt is a release tool, never a
+  # runtime dependency (the three-dependency rule is unaffected).
+  - package-ecosystem: pip
+    directory: /scripts/data
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 2
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: "chore(ci):"

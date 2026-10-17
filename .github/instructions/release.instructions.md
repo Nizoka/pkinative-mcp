@@ -1,6 +1,6 @@
 ---
 description: "Use when preparing releases, changelog entries, version bumps, server.json / CITATION.cff metadata, the publish workflow and GitHub release notes."
-applyTo: "package.json,server.json,src/version.ts,CITATION.cff,CHANGELOG.md,release-notes/**,.github/workflows/publish.yml"
+applyTo: "package.json,server.json,src/version.ts,CITATION.cff,CHANGELOG.md,release-notes/**,.github/drafts/**,.github/workflows/publish.yml"
 ---
 # Release Standards
 

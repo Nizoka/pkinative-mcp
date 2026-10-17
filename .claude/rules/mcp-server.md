@@ -3,10 +3,7 @@ paths:
   - "src/server.ts"
   - "src/tools/**"
   - "src/cli.ts"
-  - "src/http.ts"
-  - "src/auth.ts"
-  - "src/resources.ts"
-  - "src/projection.ts"
+  - "src/*.ts"
 ---
 <!-- GENERATED from .github/instructions/mcp-server.instructions.md by scripts/build-claude-rules.ts — do not edit -->
 

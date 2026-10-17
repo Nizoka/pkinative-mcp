@@ -1,6 +1,6 @@
 ---
 description: "Use when editing MCP transport, tool registration, JSON schemas, projection, resources, the cache gate or request/response handling."
-applyTo: "src/server.ts,src/tools/**,src/cli.ts,src/http.ts,src/auth.ts,src/resources.ts,src/projection.ts"
+applyTo: "src/server.ts,src/tools/**,src/cli.ts,src/*.ts"
 ---
 # MCP Server Standards
 

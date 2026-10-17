@@ -39,17 +39,22 @@ PBES2-encrypted) or a PKCS#12 file. Worked examples:
             "extensions": { "subjectAltName": { "dns": ["svc.example.test", "www.svc.example.test"] },
                             "keyUsage": ["digitalSignature"], "extendedKeyUsage": ["serverAuth"] } },
   "signer": { "key": { "path": "fixtures/leaf.key.pem" } }, "encoding": "der" } }
-// 3. The leaf, issued from the request (AKI computed from the issuer; issuer signature verified)
+// 3. The leaf, issued from the request UNDER THE CA OF STEP 1 — the issuer is the CA's
+//    certificate and the signer is the CA's key (AKI computed from the issuer; issuer
+//    signature verified). Issuing under a leaf is PKI_REASON_NOT_A_CA at step 4.
 { "tool": "create_certificate", "arguments": {
   "spec": { "serialNumber": "0x1a2b3c", "subject": { "CN": "svc.example.test" },
             "notBefore": "2027-01-01T00:00:00Z", "validityDays": 90,
             "extensions": { "subjectAltName": { "dns": ["svc.example.test"] }, "extendedKeyUsage": ["serverAuth"], "keyUsage": ["digitalSignature"] } },
-  "issuerCertificate": { "path": "fixtures/leaf.crt.pem" },
-  "subjectPublicKey": { "path": "fixtures/leaf.csr.pem" },
-  "signer": { "key": { "path": "fixtures/leaf.key.pem" } }, "encoding": "der" } }
-// 4. Prove it
+  "issuerCertificate": { "derBase64": "<from 1>" },
+  "subjectPublicKey": { "derBase64": "<from 2>" },
+  "signer": { "key": { "path": "fixtures/ed25519.key.pem" } }, "encoding": "der" } }
+// 4. Prove it — the anchor is the CA of step 1
 { "tool": "verify_certificate_chain", "arguments": {
-  "leaf": { "derBase64": "<from 3>" }, "trustAnchors": [{ "path": "fixtures/leaf.crt.pem" }], "at": "2027-01-01T00:00:00Z" } }
+  "leaf": { "derBase64": "<from 3>" }, "trustAnchors": [{ "derBase64": "<from 1>" }],
+  "at": "2027-01-01T00:00:00Z", "serverName": { "host": "svc.example.test" }, "purposes": ["serverAuth"],
+  "verbosity": "summary" } }
+// → { valid: true, reasonCodes: [], pathLength: 2, evaluatedAt, revocationEvidence, diagnosticCount }
 ```
 
 ## The `signer` fragment
@@ -67,8 +72,9 @@ Every signing tool takes the same `signer` object (`src/signer.ts`):
 | `saltLength` | RSA-PSS salt length in bytes (`'pss'` only; default: the hash length). |
 
 The key is imported into a **non-extractable** Web Crypto key and never leaves the engine;
-the result describes it through `signingKey` (algorithm, handle type, usages) — never a
-byte. The algorithm follows the key: ECDSA on the key's curve, Ed25519 / Ed448 without a
+the result never carries a byte of it — `summary` names the algorithms used and, for
+`create_certificate` / `create_csr`, `publicKeyFrom` (`signer` when the public key was derived
+from a plain `signer.key`); only `open_pkcs12` describes a key handle, as `keys[].signingKey`. The algorithm follows the key: ECDSA on the key's curve, Ed25519 / Ed448 without a
 hash, RSA under the scheme you name. `encode_x509_structure { structure: 'signature-algorithm', signer }`
 returns the AlgorithmIdentifier such a signature would carry without signing anything
 ([`encode-x509-structure-signature-algorithm.json`](../../examples/encode-x509-structure-signature-algorithm.json)).

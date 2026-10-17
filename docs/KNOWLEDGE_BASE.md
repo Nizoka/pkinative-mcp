@@ -379,7 +379,7 @@ The wide reaches are named sets, measured from the import closure:
 | `verifySignerInfoSignature` | function | `src/tools/inspect-cms.ts`, `src/tools/sign-cms.ts` | `amend_cms`, `inspect_cms`, `inspect_timestamp`, `sign_cms`, `verify_cms` (5) |
 | `verifyTimeStampToken` | function | `src/tools/amend-cms.ts`, `src/tools/verify-timestamp.ts` | `amend_cms`, `verify_cms`, `verify_timestamp` (3) |
 
-The CLI invocation that reaches each export (pkinative-cli 1.0.0, 18 command groups) is the `via` member of the same registry; `tests/coverage-matrix.test.ts` asserts every CLI group has a tool carrying its noun.
+The CLI invocation that reaches each export (pkinative-cli 1.0.0, 18 command groups) is the `via` member of the same registry; `tests/coverage-matrix.test.ts` asserts every CLI group has a tool carrying its noun. Two CLI conveniences have no tool-level twin by design: the CLI's `--config` file (an MCP call carries every member of its arguments; the host passes them — the nine operator variables are the whole environment surface), and a PEM-wrapped OID from the CLI's OID command (`resolve_oid encode` answers hex per OID; the artefact form is `encode_asn1 { spec: { type: 'oid', value }, encoding: 'pem', label }`, while `decode_asn1 reencode`, `create_ocsp_request` and `create_timestamp_request` take `label` for theirs and `resolve_oid decode` reads `input` — pem / derBase64 / path — as well as `hex`).
 
 ---
 

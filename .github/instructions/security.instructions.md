@@ -1,6 +1,6 @@
 ---
 description: "Use when touching secrets, key views, the signer, the sandbox, file IO, the HTTP transport, the cache, resources, input bounds or the workflows."
-applyTo: "src/secrets.ts,src/key-views.ts,src/signer.ts,src/sandbox.ts,src/http.ts,src/auth.ts,src/cache.ts,src/resources.ts,src/pki-input.ts,src/output.ts,.github/workflows/**"
+applyTo: "src/secrets.ts,src/key-views.ts,src/signer.ts,src/sandbox.ts,src/http.ts,src/auth.ts,src/cache.ts,src/resources.ts,src/pki-input.ts,src/content-input.ts,src/output.ts,src/caps.ts,src/tools/sign-cms.ts,src/tools/convert-pem.ts,src/server.ts,.github/workflows/**"
 ---
 # Security Standards
 

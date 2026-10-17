@@ -6,6 +6,7 @@ paths:
   - "CITATION.cff"
   - "CHANGELOG.md"
   - "release-notes/**"
+  - ".github/drafts/**"
   - ".github/workflows/publish.yml"
 ---
 <!-- GENERATED from .github/instructions/release.instructions.md by scripts/build-claude-rules.ts — do not edit -->

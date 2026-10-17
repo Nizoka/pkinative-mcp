@@ -9,7 +9,12 @@ paths:
   - "src/cache.ts"
   - "src/resources.ts"
   - "src/pki-input.ts"
+  - "src/content-input.ts"
   - "src/output.ts"
+  - "src/caps.ts"
+  - "src/tools/sign-cms.ts"
+  - "src/tools/convert-pem.ts"
+  - "src/server.ts"
   - ".github/workflows/**"
 ---
 <!-- GENERATED from .github/instructions/security.instructions.md by scripts/build-claude-rules.ts — do not edit -->

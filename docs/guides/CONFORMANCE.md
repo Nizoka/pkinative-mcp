@@ -51,8 +51,9 @@ to), and judges the structured result:
 | OCSP request (`create_ocsp_request`) | `decode_asn1` of the bytes, plus an independent `node:crypto` reckoning of the CertID hashes and the serial |
 | PEM re-encoding (`convert_pem`) | the DER fixture decoded back through the matching read tool |
 
-Two more rules at this level: a **deterministic** entry (`deterministic: true` — 13 of the
-23: the Ed25519 and RSA PKCS#1 artefacts, every request, every PEM re-encoding) is produced
+Two more rules at this level: a **deterministic** entry (`deterministic: true` — 14 of the
+23: the Ed25519 and RSA PKCS#1 artefacts including the pathLen-0 intermediate signed by the
+Ed25519 CA, every request, every PEM re-encoding) is produced
 twice by the generator and the two digests must be equal; and a **negative canary**
 (`expectRefused`) must be refused with its declared code — a canary that writes bytes is an
 **XPASS** and fails the run, the one way to know the refusals are real and not a validator
@@ -95,7 +96,7 @@ and execution is sequential), `<password:test-only>`. The table:
 |---|---|---|---|
 | `ca-ed25519`, `ca-rsa-pkcs1`, `ca-rsa-pss`, `ca-ec` | `create_certificate` | a self-signed CA per signature family (critical basicConstraints + keyUsage) | Ed25519, RSA PKCS#1: yes; RSA-PSS, EC: no |
 | `leaf-ed25519`, `leaf-rsa-pkcs1`, `leaf-rsa-pss`, `leaf-ec` | `create_certificate` | a serverAuth leaf under each CA — the subject key from a CSR, a certificate or a PUBLIC KEY; SAN with DNS, IPv4 and IPv6 | as above |
-| `inter-pathlen0`, `leaf-under-inter` | `create_certificate` | a pathLen-0 intermediate and a leaf issued under it (`-untrusted` on the OpenSSL side) | no (EC) |
+| `inter-pathlen0`, `leaf-under-inter` | `create_certificate` | a pathLen-0 intermediate and a leaf issued under it (`-untrusted` on the OpenSSL side) | intermediate: yes (signed by the Ed25519 CA); leaf: no (EC) |
 | `csr-ec-san`, `csr-rsa-pss`, `csr-ed25519` | `create_csr` | requests with a SAN extensionRequest, per family | Ed25519: yes |
 | `cms-attached`, `cms-detached`, `cms-ed25519-attached` | `sign_cms` | attached and detached SignedData over `content.txt` with the chain embedded; an Ed25519 signer against its own root | Ed25519: yes |
 | `tsq-sha256`, `tsq-sha384` | `create_timestamp_request` | TimeStampReq over data and over a digest, nonce and policy pinned | yes |

@@ -136,8 +136,13 @@ When set: give it a directory the host owns, keep it empty or trusted (a pre-exi
 symlink or junction inside it is detected by the realpath check on reads and writes alike,
 but "use an empty destination" is the documented posture), and remember that everything
 in it is enumerable through `resources/list` and readable through `resources/read`
-(≤ 50 MiB per read) by the same host — **except key-bearing files**, which are never listed
-and never served. Drop a `.key` or `.p12` in it only for the key and signer tools to read;
+(≤ 50 MiB per read) by the same host — **except key material**, which is never listed
+and never served: refused by extension (`.key .p8 .p12 .pfx`) and by **content** anywhere in
+the file (a PEM key after a prefix, hidden among many blocks, a raw DER key behind junk,
+base64 key material in a text file), whatever the name. The same content test guards
+`convert_pem encode` (exactly one DER value) and the content inputs (`content.path` of
+`sign_cms`, `data.path` of `create_timestamp_request`): content is never a key.
+Drop a `.key` or `.p12` in it only for the key and signer tools to read;
 prefer `PKINATIVE_MCP_PASSWORD` to a `password` input for its password.
 
 The cache (`PKINATIVE_MCP_CACHE_DIR`) stores tool output in plaintext at rest; the gate

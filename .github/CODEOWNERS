@@ -12,6 +12,7 @@ src/index.ts @Nizoka
 package.json @Nizoka
 server.json @Nizoka
 tests/_fixtures/ @Nizoka
+docs/assets/ecosystem.json @Nizoka
 
 # OpenSSL-made test material: never regenerated in place (tests/fixtures/PROVENANCE.md)
 tests/fixtures/ @Nizoka

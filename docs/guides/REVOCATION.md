@@ -45,13 +45,16 @@ Saying "valid" without evidence is a choice you make: the verdict says so
 The RFC 5280 §6.3 verdict of ONE certificate against ONE base CRL: the list must be **in
 scope** for the certificate (issuer, issuing distribution point, reasons), **fresh**
 (`nextUpdate`, or `staleTolerance` milliseconds past it; the engine policy by default),
-**signature-verified** against `issuer` — without it the engine refuses the unverified list,
-so pass it for a real verdict — and the serial must not be listed (`PKI_REASON_REVOKED`
-carries the revocation date and reason). `delta` applies a delta CRL over the base: it must
-carry a `deltaCRLIndicator` (a base passed as the delta is `VALIDATION_ERROR` —
-[`check-crl-revocation-not-delta.json`](../../examples/check-crl-revocation-not-delta.json))
+**signature-verified** against `issuer` — without it the list is not accepted as evidence
+(a verdict: `valid: false`, `PKI_REASON_REVOCATION_UNKNOWN`, `signatureVerified: null`;
+never `isError`), so pass it for a real verdict — and the serial must not be listed
+(`PKI_REASON_REVOKED` carries the revocation date and reason). `delta` applies a delta CRL
+over the base: it must carry a `deltaCRLIndicator` (a base passed as the delta is
+`VALIDATION_ERROR` — [`check-crl-revocation-not-delta.json`](../../examples/check-crl-revocation-not-delta.json))
 and name the base's number; both signatures are reported (`signatureVerified`,
-`deltaSignatureVerified`; [`check-crl-revocation-delta.json`](../../examples/check-crl-revocation-delta.json)).
+`deltaSignatureVerified`; [`check-crl-revocation-delta.json`](../../examples/check-crl-revocation-delta.json)),
+and a delta whose signature does not verify against `issuer` is **not applied**: the verdict
+is `valid: false` with `PKI_REASON_REVOCATION_UNKNOWN` on `delta`.
 
 `inspect_crl` shows the list's facts — issuer, `thisUpdate` / `nextUpdate`, `crlNumber`,
 `isDelta` / `baseCrlNumber`, the issuing distribution point, `entryCount` (walked with a lazy
@@ -118,7 +121,9 @@ response answered, unless `hashAlgorithm` says otherwise, and reports it in `has
 ## The whole chain in one call
 
 `verify_certificate_chain { leaf, candidates, trustAnchors, crls: […], ocspResponses: […], requireRevocation: true, at }`
-judges every certificate below the anchor from the evidence given — plus, for `verify_cms`,
+judges the path from the evidence given — `requireRevocation: true` demands authenticated
+evidence for the **end-entity** certificate (the engine's rule); an intermediate is judged
+from the evidence you pass and `revocationEvidence` counts what covered the path — plus, for `verify_cms`,
 the CRLs the message carries ([`verify-certificate-chain-revoked.json`](../../examples/verify-certificate-chain-revoked.json),
 [`verify-cms-attached-offline-revocation.json`](../../examples/verify-cms-attached-offline-revocation.json)).
 `PKI_REASON_REVOKED` is reported only from **authenticated** evidence (a CRL whose
@@ -143,7 +148,8 @@ responder); a listing on an unverified list is a claim in the message, and the v
 ## Pitfalls
 
 - **A CRL without its issuer is not evidence.** `check_crl_revocation` without `issuer`
-  cannot verify the signature and the engine refuses the unverified list; pass the CRL
+  cannot verify the signature, so the list is not accepted as evidence — a verdict
+  (`valid: false`, `PKI_REASON_REVOCATION_UNKNOWN`), not an error; pass the CRL
   issuer certificate (usually the CA that issued the certificate).
 - **A delegated responder must be authorised.** A response signed by a certificate the CA
   did not issue with id-kp-OCSPSigning is `responderAuthorized: false` — unless you state

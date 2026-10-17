@@ -534,11 +534,12 @@ describe('dependency review and audit', () => {
         expect(readText('.nvmrc')).toBe('22\n');
     });
 
-    it('keeps dependabot on npm and github-actions, weekly, with the toolchain majors held back', () => {
+    it('keeps dependabot on npm, github-actions and pip (the hash-pinned linter file), weekly, with the toolchain majors held back', () => {
         const bot = readText('.github', 'dependabot.yml');
         expect(bot).toMatch(/package-ecosystem:\s*npm/);
         expect(bot).toMatch(/package-ecosystem:\s*github-actions/);
-        expect((bot.match(/interval:\s*weekly/g) ?? []).length).toBe(2);
+        expect(bot).toMatch(/package-ecosystem:\s*pip/);
+        expect((bot.match(/interval:\s*weekly/g) ?? []).length).toBe(3);
         for (const name of ['typescript', 'eslint', 'vitest']) expect(bot).toMatch(new RegExp(`dependency-name:\\s*"${name}"\\s*\\n\\s*update-types:\\s*\\["version-update:semver-major"\\]`));
     });
 

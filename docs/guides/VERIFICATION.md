@@ -45,12 +45,12 @@ The same chain at `"at": "2050-01-01T00:00:00Z"` returns `valid: false` with
 | --- | --- |
 | `leaf` | The certificate judged. |
 | `trustAnchors` | Required, ≤ 256, every PEM block of every item. The verdict is relative to them; no system store is consulted. A leaf that chains to a CA you did not anchor is `PKI_REASON_NO_TRUST_ANCHOR`. |
-| `candidates` | Untrusted intermediates the path may use. A server that sends only its leaf is the usual `PKI_REASON_ISSUER_NOT_FOUND`. |
+| `candidates` | Untrusted intermediates the path may use. A server that sends only its leaf, judged against a root anchor, is the usual `PKI_REASON_SIGNATURE_NOT_CHECKED` + `PKI_REASON_NO_TRUST_ANCHOR` pair — no link could be built; `build_certificate_path` names the issuer that is missing. |
 | `at` | The instant of evaluation (ISO 8601; a date-time without a zone is UTC; an impossible date is refused). Omitted: `PKINATIVE_MCP_AT`, else the wall clock — then never cached. `evaluatedAt` / `evaluatedAtSource` (`input` \| `pinned` \| `clock`) echo it. |
 | `serverName` | `{ host }` or `{ ip }`: the RFC 6125 identity check (SAN dNSName / iPAddress, wildcards). Also available alone as `check_certificate_name`. |
 | `purposes` | `serverAuth`, `clientAuth`, `codeSigning`, `emailProtection`, `timeStamping`, `ocspSigning`, `any`, or a dotted OID — judged along the path (a CA's own extKeyUsage restricts what it issued, the Web PKI reading). Also alone as `check_certificate_purpose`. |
 | `policy` | RFC 5280 §6.1.1 inputs: `initialPolicySet`, `requireExplicitPolicy`, `inhibitPolicyMapping`, `inhibitAnyPolicy`. |
-| `crls`, `ocspResponses`, `requireRevocation` | The revocation evidence you fetched ([REVOCATION.md](REVOCATION.md)); `requireRevocation: true` demands authenticated evidence for every certificate below the anchor (`PKI_REASON_REVOCATION_UNKNOWN` otherwise). |
+| `crls`, `ocspResponses`, `requireRevocation` | The revocation evidence you fetched ([REVOCATION.md](REVOCATION.md)); `requireRevocation: true` demands authenticated evidence for the end-entity certificate (`PKI_REASON_REVOCATION_UNKNOWN` otherwise — the engine's rule; an intermediate is judged from the evidence you pass, and `revocationEvidence` counts what covered the path). |
 | `allowSha1`, `encodingRules`, `pemMode`, `strict`, `limits` | The shared parse options; `limits.maxPathsExplored` (default 1 000) and `limits.maxChainLength` (10) bound the §6 search under the operator ceiling. |
 
 ## Reading the result

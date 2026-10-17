@@ -45,6 +45,11 @@ Everything below waits on a pkinative export; implementing it on raw primitives 
 - [ ] **DSA and ML-DSA verification** — parsed and reported, never verified or signed (`PKI_REASON_SIGNATURE_NOT_CHECKED` / `UNSUPPORTED_KEY`); the wrapper follows the engine the day it verifies them through Web Crypto.
 - [ ] **A non-UTF-8 password** — JSON carries UTF-8 strings only; the engine's `password: Uint8Array` form cannot be expressed over MCP and stays unexposed.
 
+### By design (CLI parity notes)
+
+- **No `--config` equivalent** — pkinative-cli reads a configuration file for defaults; an MCP call carries every member of its arguments, and the host passes them, so there is nothing for a config file to supply. The nine operator knobs are the whole environment surface. Will not be added.
+- **`resolve_oid encode` answers hex per OID, never an artefact** — the CLI's PEM-wrapped OID is `encode_asn1 { spec: { type: 'oid', value }, encoding: 'pem', label }` here; `decode_asn1 reencode`, `create_ocsp_request` and `create_timestamp_request` take `label` for their PEM artefacts, and `resolve_oid decode` takes `input` (pem / derBase64 / path) as an alternative to `hex`.
+
 ### Next
 
 - [ ] **Catalogue superset gate** — `tests/catalogue-superset.test.ts` comparing the live `tools/list` with the catalogue frozen at the 1.0.0 tag (`tests/_fixtures/tool-shape.v1.0.0.json`): no removal, no narrowing, no new `required`, no tighter bound; accepted deltas enumerated in the test. The comparison starts with the first release that has something to compare.
