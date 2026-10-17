@@ -23,7 +23,7 @@
  * never throw an error visible to the MCP client.
  */
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync, mkdirSync } from 'node:fs';
+import { closeSync, fstatSync, mkdirSync, openSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { CACHE_MAX_BYTES, CACHE_TTL_SECONDS } from './caps.js';
@@ -47,7 +47,7 @@ function getCacheDir(): string | null {
     if (raw === undefined || raw === '') return null;
     const resolved = resolve(raw);
     try {
-        if (!existsSync(resolved)) mkdirSync(resolved, { recursive: true });
+        mkdirSync(resolved, { recursive: true }); // idempotent: no existence check before it
         return resolved;
         /* v8 ignore next 7 */
     } catch (err) {
@@ -98,19 +98,32 @@ export function getCached<V>(tool: string, apiVersion: string, input: unknown): 
     if (dir === null || holdsSecret(input)) return null;
     const key = computeKey(tool, apiVersion, input);
     const file = join(dir, `${key}.json`);
-    if (!existsSync(file)) return null;
+    // One open file: its age and its bytes are read through the same descriptor
+    // (no existence check, no stat on the path before the read — nothing can be
+    // swapped in between). A file that cannot be opened is a miss.
+    let fd: number;
     try {
-        const stat = statSync(file);
-        const ageSeconds = (Date.now() - stat.mtimeMs) / 1000;
+        fd = openSync(file, 'r');
+    } catch {
+        return null;
+    }
+    let expired = false;
+    try {
+        const ageSeconds = (Date.now() - fstatSync(fd).mtimeMs) / 1000;
         if (ageSeconds > TTL_SECONDS) {
-            try { unlinkSync(file); } catch { /* ignore */ }
+            expired = true;
             return null;
         }
-        const parsed = JSON.parse(readFileSync(file, 'utf8')) as CacheEntry<V>;
+        const parsed = JSON.parse(readFileSync(fd, 'utf8')) as CacheEntry<V>;
         return parsed.value;
         /* v8 ignore next 3 */
     } catch {
         return null;
+    } finally {
+        closeSync(fd);
+        if (expired) {
+            try { unlinkSync(file); } catch { /* ignore */ }
+        }
     }
 }
 

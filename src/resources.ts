@@ -18,13 +18,13 @@
  * directory, and every read is re-validated to stay inside it. When the
  * sandbox is disabled, there are simply no resources.
  */
-import { promises as fs, type Dirent, type Stats } from 'node:fs';
+import { promises as fs, type Dirent } from 'node:fs';
 import path from 'node:path';
 
 import { MAX_LISTED_RESOURCES, MAX_RESOURCE_READ_BYTES, MAX_RESOURCE_WALK_DEPTH as MAX_WALK_DEPTH } from './caps.js';
 import { SecurityError, ToolError } from './errors.js';
 import { findSecretMaterial, isSecretMaterial } from './pki-input.js';
-import { assertRealpathInside, getOutputSandbox, isSecretPath, resolveSandboxPath } from './sandbox.js';
+import { getOutputSandbox, isSecretPath, openSandboxFile, readExactly, resolveSandboxPath } from './sandbox.js';
 
 /** URI scheme + authority for sandboxed resources. */
 export const RESOURCE_URI_PREFIX = 'pkinative://output/';
@@ -110,13 +110,19 @@ export function resourceLinkForPath(absPath: string): { uri: string; name: strin
 const SECRET_SNIFF_MAX_BYTES = 4 * 1024 * 1024;
 
 async function holdsSecretMaterial(file: string): Promise<boolean> {
+    // One open file: its size and its bytes come from the same handle (a file
+    // swapped or grown between a stat and a read cannot slip a key past the sniff).
+    let handle: fs.FileHandle | undefined;
     try {
-        const stat = await fs.stat(file);
+        handle = await fs.open(file, 'r');
+        const stat = await handle.stat();
         if (!stat.isFile() || stat.size === 0 || stat.size > SECRET_SNIFF_MAX_BYTES) return false;
-        return isSecretMaterial(new Uint8Array(await fs.readFile(file)));
-        /* v8 ignore next 3 -- a file racing deletion between readdir and read is not listed. */
+        return isSecretMaterial(await readExactly(handle, stat.size, 'resource'));
+        /* v8 ignore next 3 -- a file racing deletion or a write between readdir and read is not listed. */
     } catch {
         return true;
+    } finally {
+        await handle?.close();
     }
 }
 
@@ -189,21 +195,22 @@ export async function readResource(uri: string): Promise<ResourceContents> {
     if (isSecretPath(resolved)) {
         throw new SecurityError('Key-bearing files (.key .p8 .p12 .pfx) are never served as resources — open them with inspect_private_key / inspect_pkcs12 / open_pkcs12 instead.', { remedy: 'inspect_private_key' });
     }
-    let stat: Stats;
+    // One open file: the kind, the size, the real location (a pre-planted junction / symlink inside
+    // the sandbox must not redirect a read outside it) and the bytes are those of the same handle.
+    const opened = await openSandboxFile(resolved, 'resource path');
+    if (opened === 'absent' || opened === 'not-a-file') {
+        throw new ToolError('UNKNOWN_RESOURCE', `No resource found at ${uri}.`);
+    }
+    let bytes: Buffer;
     try {
-        stat = await fs.stat(resolved);
-    } catch {
-        throw new ToolError('UNKNOWN_RESOURCE', `No resource found at ${uri}.`);
+        if (opened.size > MAX_RESOURCE_READ_BYTES) {
+            throw new ToolError('OUTPUT_TOO_LARGE', `Resource ${uri} (${opened.size} bytes) exceeds the maximum read size (${MAX_RESOURCE_READ_BYTES} bytes).`);
+        }
+        const view = await readExactly(opened.handle, opened.size, `resource ${uri}`);
+        bytes = Buffer.from(view.buffer, view.byteOffset, view.byteLength);
+    } finally {
+        await opened.handle.close();
     }
-    if (!stat.isFile()) {
-        throw new ToolError('UNKNOWN_RESOURCE', `No resource found at ${uri}.`);
-    }
-    if (stat.size > MAX_RESOURCE_READ_BYTES) {
-        throw new ToolError('OUTPUT_TOO_LARGE', `Resource ${uri} (${stat.size} bytes) exceeds the maximum read size (${MAX_RESOURCE_READ_BYTES} bytes).`);
-    }
-    // A pre-planted junction / symlink inside the sandbox must not redirect a read outside it.
-    await assertRealpathInside(resolved, 'resource path');
-    const bytes = await fs.readFile(resolved);
     const mimeType = mimeTypeFor(resolved);
     // A-019 / A2-040: the content decides, not the name — key material anywhere in the file (an armoured
     // block at any position, a DER key behind a prefix, a base64 run) is never served.

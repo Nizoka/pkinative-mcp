@@ -4,14 +4,13 @@
  * path; no extension restriction — it is the bytes being signed, not a PKI
  * object). Bounded by the inline and path caps.
  */
-import { promises as fs } from 'node:fs';
 import { z } from 'zod';
 
 import { decodeBase64Field } from './base64.js';
 import { assertInputWithin, MAX_CONTENT_INLINE_BYTES, MAX_CONTENT_PATH_BYTES } from './caps.js';
 import { SecurityError, ToolError } from './errors.js';
 import { findSecretMaterial } from './pki-input.js';
-import { isSecretPath, SECRET_EXTENSIONS, resolveInputFile } from './sandbox.js';
+import { isSecretPath, SECRET_EXTENSIONS, readInputFile } from './sandbox.js';
 
 export interface ContentInputFields {
     readonly text?: string | undefined;
@@ -58,14 +57,13 @@ export async function loadContent(input: ContentInputFields, what: string): Prom
     if (input.path === undefined) {
         throw new ToolError('VALIDATION_ERROR', `${what}: pass exactly one of text / base64 / path`, { path: what });
     }
-    const { resolved, size } = await resolveInputFile(input.path, null, `${what}.path`);
-    // A2-043: the content a tool reads from the sandbox is never a key — neither by name nor by content.
-    if (isSecretPath(resolved)) {
-        throw new SecurityError(`${what}.path '${input.path}' names a key-bearing file (${SECRET_EXTENSIONS.join(', ')}): a key is never signed, stamped or embedded as content — describe it with inspect_private_key instead.`, { path: `${what}.path`, remedy: 'inspect_private_key' });
-    }
-    assertInputWithin(size, MAX_CONTENT_PATH_BYTES, `${what}.path '${input.path}'`);
-    const buf = await fs.readFile(resolved);
-    const bytes = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+    const { bytes } = await readInputFile(input.path, null, `${what}.path`, (size, resolved) => {
+        // A2-043: the content a tool reads from the sandbox is never a key — neither by name nor by content.
+        if (isSecretPath(resolved)) {
+            throw new SecurityError(`${what}.path '${input.path}' names a key-bearing file (${SECRET_EXTENSIONS.join(', ')}): a key is never signed, stamped or embedded as content — describe it with inspect_private_key instead.`, { path: `${what}.path`, remedy: 'inspect_private_key' });
+        }
+        assertInputWithin(size, MAX_CONTENT_PATH_BYTES, `${what}.path '${input.path}'`);
+    });
     const secret = findSecretMaterial(bytes);
     if (secret !== null) {
         throw new SecurityError(`${what}.path '${input.path}' holds private-key material (${secret}): a key is never signed, stamped or embedded as content — describe it with inspect_private_key instead.`, { path: `${what}.path`, kind: secret, remedy: 'inspect_private_key' });

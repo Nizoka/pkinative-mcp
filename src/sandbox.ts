@@ -121,35 +121,115 @@ export function resolveSandboxPath(userPath: unknown, what = 'path'): string {
     return resolveRelative(userPath, what).resolved;
 }
 
+/** A sandbox file held open for reading: the handle, and the size of what it holds. */
+export interface OpenSandboxFile {
+    readonly handle: fs.FileHandle;
+    readonly size: number;
+}
+
 /**
- * Resolve a relative input file inside the sandbox and stat it. Throws
- * `INPUT_NOT_FOUND` when absent (message carries the relative path only) and
- * `INVALID_EXTENSION` when `extensions` is given and the name does not match.
+ * Open a resolved sandbox file for reading, race-free: the handle is opened
+ * first, then the size and the kind come from the handle (`fstat`), then the
+ * REAL location of the path is proven inside the real sandbox (a pre-planted
+ * junction / symlink must not redirect a read outside it — the file itself,
+ * not only its parent) and bound to the open file (same device and inode: a
+ * path swapped between the open and the check is refused). Nothing is read
+ * from the path after the check, only from the handle (`readExactly`).
+ * Returns `'absent'` when nothing can be opened there, `'not-a-file'` for a
+ * directory or a special file (both closed); throws `SECURITY_VIOLATION`.
+ * The caller closes the handle it receives.
  */
-export async function resolveInputFile(
+export async function openSandboxFile(resolved: string, what = 'path'): Promise<OpenSandboxFile | 'absent' | 'not-a-file'> {
+    let handle: fs.FileHandle;
+    try {
+        handle = await fs.open(resolved, 'r');
+    } catch {
+        return 'absent';
+    }
+    try {
+        const opened = await handle.stat({ bigint: true });
+        if (!opened.isFile()) {
+            await handle.close();
+            return 'not-a-file';
+        }
+        const real = await realpathInside(resolved, what);
+        const located = await fs.stat(real, { bigint: true });
+        if (located.dev !== opened.dev || located.ino !== opened.ino) {
+            throw new SecurityError(`Refusing ${what} '${relativeLabel(resolved)}': the file changed while it was being opened.`);
+        }
+        return { handle, size: Number(opened.size) };
+    } catch (err) {
+        await handle.close();
+        throw err;
+    }
+}
+
+/**
+ * Read exactly `size` bytes from an open handle, from its start. One probe
+ * byte past `size` detects a file that grew, a short read one that shrank:
+ * either is `IO_ERROR` (the size the caller was given no longer describes
+ * the bytes), never a silent truncation.
+ */
+export async function readExactly(handle: fs.FileHandle, size: number, what = 'path'): Promise<Uint8Array> {
+    const buffer = new Uint8Array(size + 1);
+    let total = 0;
+    while (total < buffer.byteLength) {
+        const { bytesRead } = await handle.read(buffer, total, buffer.byteLength - total, total);
+        if (bytesRead === 0) break;
+        total += bytesRead;
+    }
+    if (total !== size) {
+        throw new ToolError('IO_ERROR', `${what} changed while it was being read (${total > size ? 'grew' : 'shrank'}) — retry once the file is complete.`, { remedy: 'retry' });
+    }
+    return buffer.subarray(0, size);
+}
+
+/**
+ * Read a relative input file inside the sandbox through one open handle.
+ * Throws `INVALID_EXTENSION` when `extensions` is given and the name does
+ * not match, `INPUT_NOT_FOUND` when absent or not a regular file (the message
+ * carries the relative path only), `SECURITY_VIOLATION` from the sandbox
+ * checks, `IO_ERROR` when the file changed under the read. `before` runs with
+ * the size and the resolved path once the file is open and proven, before
+ * any byte is read: the caller's caps and refusals go there.
+ */
+export async function readInputFile(
     userPath: unknown,
     extensions: readonly string[] | null,
     what = 'path',
-): Promise<{ resolved: string; size: number }> {
+    before: (size: number, resolved: string) => void = () => undefined,
+): Promise<{ resolved: string; bytes: Uint8Array }> {
     const { resolved } = resolveRelative(userPath, what);
     if (extensions !== null && !hasAllowedExtension(resolved, extensions)) {
         throw new ToolError('INVALID_EXTENSION', `${what} must end with one of: ${extensions.join(', ')}.`, { extensions });
     }
-    let stat;
-    try {
-        stat = await fs.stat(resolved);
-    } catch {
+    const opened = await openSandboxFile(resolved, what);
+    if (opened === 'absent') {
         throw new ToolError('INPUT_NOT_FOUND', `${what} '${String(userPath)}' does not exist in the sandbox — list the sandbox with resources/list, or pass the bytes inline.`, { path: String(userPath), remedy: 'resources/list' });
     }
-    if (!stat.isFile()) {
+    if (opened === 'not-a-file') {
         throw new ToolError('INPUT_NOT_FOUND', `${what} '${String(userPath)}' is not a regular file — name a file listed by resources/list.`, { path: String(userPath), remedy: 'resources/list' });
     }
-    // The read side gets the same defence in depth as the write side: the REAL
-    // location of the file itself (not only its parent — a file symlink would
-    // otherwise pass) must live inside the real sandbox, so a pre-planted
-    // junction / symlink can never redirect a read outside it.
-    await assertRealpathInside(resolved, what);
-    return { resolved, size: stat.size };
+    try {
+        before(opened.size, resolved);
+        return { resolved, bytes: await readExactly(opened.handle, opened.size, `${what} '${String(userPath)}'`) };
+    } finally {
+        await opened.handle.close();
+    }
+}
+
+/**
+ * The real path of `target`, proven inside the real sandbox. Throws
+ * `SECURITY_VIOLATION` when a symlink or junction puts it elsewhere.
+ */
+export async function realpathInside(target: string, what = 'outputPath'): Promise<string> {
+    const sandbox = requireSandbox();
+    const [realSandbox, realTarget] = await Promise.all([fs.realpath(sandbox), fs.realpath(target)]);
+    const relative = path.relative(realSandbox, realTarget);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) {
+        throw new SecurityError(`Refusing ${what} '${relativeLabel(target)}': its real location (a symlink or junction) is outside the sandbox.`);
+    }
+    return realTarget;
 }
 
 /**
@@ -159,12 +239,7 @@ export async function resolveInputFile(
  * write). Throws `SECURITY_VIOLATION`.
  */
 export async function assertRealpathInside(target: string, what = 'outputPath'): Promise<void> {
-    const sandbox = requireSandbox();
-    const [realSandbox, realTarget] = await Promise.all([fs.realpath(sandbox), fs.realpath(target)]);
-    const relative = path.relative(realSandbox, realTarget);
-    if (relative.startsWith('..') || path.isAbsolute(relative)) {
-        throw new SecurityError(`Refusing ${what} '${relativeLabel(target)}': its real location (a symlink or junction) is outside the sandbox.`);
-    }
+    await realpathInside(target, what);
 }
 
 /** Map a Node fs error on a write to the wrapper codes (never leaks the absolute path). */

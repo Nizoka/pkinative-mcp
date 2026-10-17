@@ -6,7 +6,6 @@
  * secret material (PRIVATE KEY, ENCRYPTED PRIVATE KEY, …) is listed but never
  * extracted, and never produced: the key tools are the only way to a key.
  */
-import { promises as fs } from 'node:fs';
 import { z } from 'zod';
 
 import { decodeAsn1 } from 'pkinative';
@@ -20,7 +19,7 @@ import { createParseContext, PARSE_INPUT_PROPERTIES, type ParseContext } from '.
 import { guard } from '../pki-errors.js';
 import { decodePemBlocks, isSecretLabel, isSecretMaterial, LABELS, looksLikePem, pkiInputSchema, PkiInputSchema, refuseSecretDer, type PkiInputFields } from '../pki-input.js';
 import { PROJECTION_INPUT_PROPERTIES } from '../projection.js';
-import { PKI_INPUT_EXTENSIONS, resolveInputFile } from '../sandbox.js';
+import { PKI_INPUT_EXTENSIONS, readInputFile } from '../sandbox.js';
 import { defineTool, PROJECTION_NOTE, projectableOutputSchema, WRITES, type ArtefactAttachment } from './_definition.js';
 import { diagnosticCount, parseInput, ParseShape, ProjectionShape, sha256Hex, withDiagnostics } from './_shared.js';
 
@@ -177,10 +176,8 @@ async function readInputBytes(input: PkiInputFields, ctx: ParseContext): Promise
         ctx.charge(bytes.byteLength, what);
         return { bytes, source: 'derBase64' };
     }
-    const { resolved, size } = await resolveInputFile(input.path, PKI_INPUT_EXTENSIONS, `${what}.path`);
-    assertInputWithin(size, ctx.maxInputBytes, `${what}.path '${input.path ?? ''}'`);
-    const buf = await fs.readFile(resolved);
-    return { bytes: new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength), source: input.path ?? '' };
+    const { bytes } = await readInputFile(input.path, PKI_INPUT_EXTENSIONS, `${what}.path`, (size) => assertInputWithin(size, ctx.maxInputBytes, `${what}.path '${input.path ?? ''}'`));
+    return { bytes, source: input.path ?? '' };
 }
 
 async function decode(input: z.infer<typeof InputSchema>, ctx: ParseContext): Promise<ConvertPemResult> {

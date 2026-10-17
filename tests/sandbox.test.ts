@@ -26,7 +26,9 @@ import {
     OUTPUT_EXTENSIONS,
     PKI_INPUT_EXTENSIONS,
     relativeLabel,
-    resolveInputFile,
+    openSandboxFile,
+    readExactly,
+    readInputFile,
     resolveOutputFile,
     resolveSandboxPath,
     SECRET_EXTENSIONS,
@@ -138,7 +140,7 @@ describe('sandbox resolution', () => {
         expect(() => resolveOutputFile('a.crt')).toThrow(SecurityError);
         expect(() => resolveSandboxPath('a')).toThrow(SecurityError);
         expect(thrown(() => resolveOutputFile('a.crt')).message).toContain(OUTPUT_DIR_ENV);
-        expect((await rejectionOf(resolveInputFile('a.crt', null))).code).toBe('SECURITY_VIOLATION');
+        expect((await rejectionOf(readInputFile('a.crt', null))).code).toBe('SECURITY_VIOLATION');
         expect((await rejectionOf(assertRealpathInside(os.tmpdir()))).code).toBe('SECURITY_VIOLATION');
         expect((await rejectionOf(assertAncestorInside(os.tmpdir()))).code).toBe('SECURITY_VIOLATION');
         expect((await rejectionOf(ensureParent(path.join(os.tmpdir(), 'x', 'y.crt'), 'x/y.crt'))).code).toBe('SECURITY_VIOLATION');
@@ -149,14 +151,14 @@ describe('sandbox resolution', () => {
     it('rejects a NUL byte', async () => {
         expect(() => resolveOutputFile('foo\0bar.crt')).toThrow(SecurityError);
         expect(() => resolveSandboxPath('foo\0bar')).toThrow(SecurityError);
-        expect((await rejectionOf(resolveInputFile('foo\0bar.crt', null))).code).toBe('SECURITY_VIOLATION');
+        expect((await rejectionOf(readInputFile('foo\0bar.crt', null))).code).toBe('SECURITY_VIOLATION');
     });
 
     it('rejects absolute, drive-letter and UNC paths (both separators, on every platform)', async () => {
         for (const p of ['C:\\x\\evil.crt', 'C:/x/evil.crt', '\\\\server\\share\\evil.crt', '/etc/passwd', path.join(sandbox as string, 'inside.crt')]) {
             expect(() => resolveOutputFile(p), p).toThrow(SecurityError);
             expect(() => resolveSandboxPath(p), p).toThrow(SecurityError);
-            expect((await rejectionOf(resolveInputFile(p, null))).code, p).toBe('SECURITY_VIOLATION');
+            expect((await rejectionOf(readInputFile(p, null))).code, p).toBe('SECURITY_VIOLATION');
         }
     });
 
@@ -203,44 +205,87 @@ describe('sandbox resolution', () => {
         }
     });
 
-    it('resolveInputFile honours PKI_INPUT_EXTENSIONS (or none) and reports INPUT_NOT_FOUND for a missing file or a directory', async () => {
+    it('readInputFile honours PKI_INPUT_EXTENSIONS (or none) and reports INPUT_NOT_FOUND for a missing file or a directory', async () => {
         const dir = sandbox as string;
-        expect((await rejectionOf(resolveInputFile('in.exe', PKI_INPUT_EXTENSIONS))).code).toBe('INVALID_EXTENSION');
-        const missing = await rejectionOf(resolveInputFile('nope.crt', PKI_INPUT_EXTENSIONS, 'certificate.path'));
+        expect((await rejectionOf(readInputFile('in.exe', PKI_INPUT_EXTENSIONS))).code).toBe('INVALID_EXTENSION');
+        const missing = await rejectionOf(readInputFile('nope.crt', PKI_INPUT_EXTENSIONS, 'certificate.path'));
         expect(missing.code).toBe('INPUT_NOT_FOUND');
         expect(missing.message).toContain('certificate.path');
         expect(missing.message).toContain("'nope.crt'");
         expect(missing.message).not.toContain(dir);
         expect(missing.data).toEqual({ path: 'nope.crt', remedy: 'resources/list' });
         await fs.mkdir(path.join(dir, 'folder.crt'));
-        const folder = await rejectionOf(resolveInputFile('folder.crt', PKI_INPUT_EXTENSIONS));
+        const folder = await rejectionOf(readInputFile('folder.crt', PKI_INPUT_EXTENSIONS));
         expect(folder.code).toBe('INPUT_NOT_FOUND');
         expect(folder.message).toContain('not a regular file');
         await fs.copyFile(fixture('leaf.crt.der'), path.join(dir, 'leaf.crt.der'));
-        expect(await resolveInputFile('leaf.crt.der', PKI_INPUT_EXTENSIONS)).toEqual({ resolved: path.join(dir, 'leaf.crt.der'), size: 701 });
+        const read = await readInputFile('leaf.crt.der', PKI_INPUT_EXTENSIONS);
+        expect(read.resolved).toBe(path.join(dir, 'leaf.crt.der'));
+        expect(Buffer.from(read.bytes).equals(await fs.readFile(fixture('leaf.crt.der')))).toBe(true);
+        // `before` sees the size and the resolved path once the file is open and proven, before any byte is read.
+        const seen: Array<[number, string]> = [];
+        await readInputFile('leaf.crt.der', PKI_INPUT_EXTENSIONS, 'certificate.path', (size, resolved) => { seen.push([size, resolved]); });
+        expect(seen).toEqual([[701, path.join(dir, 'leaf.crt.der')]]);
+        const capped = await rejectionOf(readInputFile('leaf.crt.der', PKI_INPUT_EXTENSIONS, 'certificate.path', () => { throw new ToolError('INPUT_TOO_LARGE', 'cap'); }));
+        expect(capped.code).toBe('INPUT_TOO_LARGE');
         // No allow-list: any name (content.path semantics).
         await fs.writeFile(path.join(dir, 'payload.bin.whatever'), Buffer.alloc(10));
-        expect(await resolveInputFile('payload.bin.whatever', null, 'content.path')).toEqual({ resolved: path.join(dir, 'payload.bin.whatever'), size: 10 });
+        expect((await readInputFile('payload.bin.whatever', null, 'content.path')).bytes).toEqual(new Uint8Array(10));
         // Backslashes resolve on win32 and stay inside on POSIX (a file name there).
         if (process.platform === 'win32') {
             await fs.mkdir(path.join(dir, 'sub'));
             await fs.copyFile(fixture('leaf.crt.der'), path.join(dir, 'sub', 'leaf.crt.der'));
-            expect((await resolveInputFile('sub\\leaf.crt.der', PKI_INPUT_EXTENSIONS)).size).toBe(701);
-            expect((await rejectionOf(resolveInputFile('..\\leaf.crt.der', PKI_INPUT_EXTENSIONS))).code).toBe('SECURITY_VIOLATION');
+            expect((await readInputFile('sub\\leaf.crt.der', PKI_INPUT_EXTENSIONS)).bytes.byteLength).toBe(701);
+            expect((await rejectionOf(readInputFile('..\\leaf.crt.der', PKI_INPUT_EXTENSIONS))).code).toBe('SECURITY_VIOLATION');
         }
     });
 
-    it.skipIf(!LINKS.file)('resolveInputFile: a dangling symlink is INPUT_NOT_FOUND', async () => {
+    it.skipIf(!LINKS.file)('readInputFile: a dangling symlink is INPUT_NOT_FOUND', async () => {
         await fs.symlink(path.join(sandbox as string, 'gone.crt'), path.join(sandbox as string, 'dangling.crt'), 'file');
-        expect((await rejectionOf(resolveInputFile('dangling.crt', null))).code).toBe('INPUT_NOT_FOUND');
+        expect((await rejectionOf(readInputFile('dangling.crt', null))).code).toBe('INPUT_NOT_FOUND');
     });
 
-    it.skipIf(!LINKS.file)('resolveInputFile: a FILE symlink inside the sandbox pointing outside is SECURITY_VIOLATION (the real path of the file itself is checked)', async () => {
+    it('openSandboxFile / readExactly: one open handle — the size and the bytes are those of the same file, a file that grew or shrank under the read is IO_ERROR, a directory is not-a-file, nothing is absent', async () => {
+        const dir = sandbox as string;
+        await fs.copyFile(fixture('leaf.crt.der'), path.join(dir, 'held.crt'));
+        await fs.mkdir(path.join(dir, 'folder'));
+        expect(await openSandboxFile(path.join(dir, 'nope.crt'))).toBe('absent');
+        expect(await openSandboxFile(path.join(dir, 'folder'))).toBe('not-a-file');
+        const opened = await openSandboxFile(path.join(dir, 'held.crt'), 'certificate.path');
+        expect(opened).not.toBeTypeOf('string');
+        const { handle, size } = opened as { handle: import('node:fs').promises.FileHandle; size: number };
+        try {
+            expect(size).toBe(701);
+            // Grown after the open (another writer appended): the announced size no longer describes the bytes.
+            await fs.appendFile(path.join(dir, 'held.crt'), Buffer.from([0x00]));
+            const grew = await rejectionOf(readExactly(handle, size, "certificate.path 'held.crt'"));
+            expect(grew.code).toBe('IO_ERROR');
+            expect(grew.message).toContain('grew');
+            expect(grew.message).not.toContain(dir);
+            // Shrunk: a short read is the same refusal.
+            await fs.truncate(path.join(dir, 'held.crt'), 100);
+            const shrank = await rejectionOf(readExactly(handle, size, "certificate.path 'held.crt'"));
+            expect(shrank.code).toBe('IO_ERROR');
+            expect(shrank.message).toContain('shrank');
+            // Back to the announced size: exactly those bytes.
+            await fs.copyFile(fixture('leaf.crt.der'), path.join(dir, 'held.crt'));
+            expect(Buffer.from(await readExactly(handle, size)).equals(await fs.readFile(fixture('leaf.crt.der')))).toBe(true);
+            // Announcing fewer bytes than the file holds is a growth too: the probe byte past `size` is read.
+            expect((await rejectionOf(readExactly(handle, 0))).code).toBe('IO_ERROR');
+        } finally {
+            await handle.close();
+        }
+        // An empty file is exactly zero bytes.
+        await fs.writeFile(path.join(dir, 'empty.crt'), new Uint8Array(0));
+        expect((await readInputFile('empty.crt', PKI_INPUT_EXTENSIONS)).bytes.byteLength).toBe(0);
+    });
+
+    it.skipIf(!LINKS.file)('readInputFile: a FILE symlink inside the sandbox pointing outside is SECURITY_VIOLATION (the real path of the file itself is checked)', async () => {
         const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'pkinative-mcp-outside-'));
         try {
             await fs.copyFile(fixture('leaf.crt.der'), path.join(outside, 'secret.crt'));
             await fs.symlink(path.join(outside, 'secret.crt'), path.join(sandbox as string, 'link.crt'), 'file');
-            const err = await rejectionOf(resolveInputFile('link.crt', PKI_INPUT_EXTENSIONS, 'certificate.path'));
+            const err = await rejectionOf(readInputFile('link.crt', PKI_INPUT_EXTENSIONS, 'certificate.path'));
             expect(err.code).toBe('SECURITY_VIOLATION');
             expect(err.message).toContain('real location');
             expect(err.message).toContain("'link.crt'");
@@ -256,7 +301,7 @@ describe('sandbox resolution', () => {
         await fs.mkdir(path.join(dir, 'real'));
         await fs.copyFile(fixture('leaf.crt.der'), path.join(dir, 'real', 'in.crt'));
         await fs.symlink(path.join(dir, 'real'), path.join(dir, 'alias'), DIR_LINK_KIND);
-        expect((await resolveInputFile('alias/in.crt', PKI_INPUT_EXTENSIONS)).size).toBe(701);
+        expect((await readInputFile('alias/in.crt', PKI_INPUT_EXTENSIONS)).bytes.byteLength).toBe(701);
         await expect(assertRealpathInside(path.join(dir, 'alias'))).resolves.toBeUndefined();
         await expect(assertAncestorInside(path.join(dir, 'alias', 'new', 'x.crt'))).resolves.toBeUndefined();
     });
@@ -375,10 +420,10 @@ describe('exclusive writes', () => {
             await expect(fs.stat(path.join(outside, 'new'))).rejects.toThrow();
             // The read side refuses the same link.
             await fs.copyFile(fixture('leaf.crt.der'), path.join(outside, 'secret.crt'));
-            expect((await rejectionOf(resolveInputFile('escape/secret.crt', PKI_INPUT_EXTENSIONS))).code).toBe('SECURITY_VIOLATION');
+            expect((await rejectionOf(readInputFile('escape/secret.crt', PKI_INPUT_EXTENSIONS))).code).toBe('SECURITY_VIOLATION');
             // A regular file next to the link still reads: the guard is about the real path, not the presence of a link.
             await fs.copyFile(fixture('leaf.crt.der'), path.join(dir, 'ok.crt'));
-            expect((await resolveInputFile('ok.crt', PKI_INPUT_EXTENSIONS)).size).toBe(701);
+            expect((await readInputFile('ok.crt', PKI_INPUT_EXTENSIONS)).bytes.byteLength).toBe(701);
         } finally {
             await fs.rm(outside, { recursive: true, force: true });
         }

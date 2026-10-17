@@ -50,10 +50,20 @@
  * tests/tools/release-prepare.test.ts; only `main()` touches git and disk.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+
+/** The text of `file`, or null when it is absent — the read decides, never an existence check before it. */
+function readIfPresent(file: string): string | null {
+    try {
+        return readFileSync(file, 'utf8');
+    } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+        throw err;
+    }
+}
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -215,9 +225,16 @@ export function bumpSecurityTable(text: string, version: string): Rewrite {
 
 // ── 6. README badge and llms.txt ────────────────────────────────────
 
+/**
+ * The shields.io engine badge as README.md writes it — the whole URL, anchored
+ * at the start of the text or a Markdown boundary (`(`, a quote, whitespace),
+ * so a badge under another host can never match: `https://img.shields.io/badge/pkinative-1.0-<colour>.svg`.
+ */
+const ENGINE_BADGE = /(^|[\s("'`<])(https?:\/\/img\.shields\.io\/badge\/pkinative-)(\d+\.\d+)(-)/m;
+
 /** The shields.io engine badge: `badge/pkinative-1.0-<colour>.svg` names the engine's minor line. */
 export function bumpReadmeEngineBadge(text: string, engine: string): Rewrite {
-    return replaceCounting(text, /(img\.shields\.io\/badge\/pkinative-)(\d+\.\d+)(-)/, (_m, a, _old, c) => `${a}${minorLine(engine)}${c}`);
+    return replaceCounting(text, ENGINE_BADGE, (_m, prefix, a, _old, c) => `${prefix}${a}${minorLine(engine)}${c}`);
 }
 
 /** `Current release: X.Y.Z` (llms.txt, AGENTS-style prose). */
@@ -300,21 +317,22 @@ export function main(argv: readonly string[], root = resolve(import.meta.dirname
     const mark = dryRun ? '~' : '+';
     let problems = 0;
     let absent = 0;
-    const engine = existsSync(join(root, 'package.json')) ? engineVersion(readFileSync(join(root, 'package.json'), 'utf8')) : null;
+    const packageJson = readIfPresent(join(root, 'package.json'));
+    const engine = packageJson === null ? null : engineVersion(packageJson);
 
     console.log(
         `release-prepare: v${version} (previous ${previousTag}, date ${date}, engine pkinative ${engine ?? '?'})${dryRun ? ' — dry run, nothing is written' : ''}`,
     );
 
-    /** Read, rewrite, report, and write unless --dry-run. A file that is not present yet is skipped. */
+    /** Read, rewrite, report, and write unless --dry-run. A file that is not present yet is skipped (the read decides, never a check before it). */
     const edit = (relPath: string, what: string, fn: (text: string) => Rewrite): void => {
         const abs = join(root, relPath);
-        if (!existsSync(abs)) {
+        const before = readIfPresent(abs);
+        if (before === null) {
             console.log(`  -  ${relPath} — not present (skipped)`);
             absent++;
             return;
         }
-        const before = readFileSync(abs, 'utf8');
         const r = fn(before);
         if (r.matched === 0) {
             console.log(`  !  ${relPath} — ${what}: pattern not found, edit by hand`);
@@ -327,21 +345,34 @@ export function main(argv: readonly string[], root = resolve(import.meta.dirname
         }
     };
 
-    /** Scaffold a file from a template unless it exists; a missing template is skipped. */
+    /**
+     * Scaffold a file from a template unless it exists; a missing template is
+     * skipped. The write is exclusive (`wx`): an existing target is reported by
+     * the write itself, never by a check before it.
+     */
     const scaffold = (targetRel: string, templateRel: string): void => {
         const target = join(root, targetRel);
-        const template = join(root, templateRel);
-        if (existsSync(target)) {
-            console.log(`  =  ${rel(target)} — exists, left alone`);
-        } else if (!existsSync(template)) {
-            console.log(`  -  ${templateRel} — not present (skipped)`);
-            absent++;
-        } else {
-            console.log(`  ${mark}  ${rel(target)} — scaffolded from ${templateRel}`);
-            if (!dryRun) {
-                mkdirSync(dirname(target), { recursive: true });
-                writeFileSync(target, scaffoldFromTemplate(readFileSync(template, 'utf8'), version, date, previousTag, templateRel));
+        const templateText = readIfPresent(join(root, templateRel));
+        if (templateText === null) {
+            if (readIfPresent(target) !== null) {
+                console.log(`  =  ${rel(target)} — exists, left alone`);
+            } else {
+                console.log(`  -  ${templateRel} — not present (skipped)`);
+                absent++;
             }
+            return;
+        }
+        if (dryRun) {
+            console.log(readIfPresent(target) === null ? `  ${mark}  ${rel(target)} — scaffolded from ${templateRel}` : `  =  ${rel(target)} — exists, left alone`);
+            return;
+        }
+        mkdirSync(dirname(target), { recursive: true });
+        try {
+            writeFileSync(target, scaffoldFromTemplate(templateText, version, date, previousTag, templateRel), { flag: 'wx' });
+            console.log(`  ${mark}  ${rel(target)} — scaffolded from ${templateRel}`);
+        } catch (err) {
+            if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+            console.log(`  =  ${rel(target)} — exists, left alone`);
         }
     };
 
@@ -365,9 +396,9 @@ export function main(argv: readonly string[], root = resolve(import.meta.dirname
 
     console.log('\n6. README engine badge and llms.txt');
     if (engine !== null) {
-        const readme = join(root, 'README.md');
+        const readme = readIfPresent(join(root, 'README.md'));
         // The badge is optional documentation: a README without one is not a bump problem.
-        if (existsSync(readme) && !/img\.shields\.io\/badge\/pkinative-/.test(readFileSync(readme, 'utf8'))) {
+        if (readme !== null && !ENGINE_BADGE.test(readme)) {
             console.log('  -  README.md — no pkinative engine badge (skipped)');
             absent++;
         } else {

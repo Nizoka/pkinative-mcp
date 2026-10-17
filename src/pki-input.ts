@@ -11,7 +11,6 @@
  * blocks where ONE object is expected is refused rather than silently
  * reduced to its first block; a bundle input takes every block of every item.
  */
-import { promises as fs } from 'node:fs';
 import { decodePem, parseEncryptedPrivateKeyInfo, parsePkcs12, parsePrivateKeyInfo, type PkiParseOptions } from 'pkinative';
 import { z } from 'zod';
 
@@ -21,7 +20,7 @@ import { createDiagnosticSink } from './diagnostics.js';
 import { SecurityError, ToolError } from './errors.js';
 import type { ParseContext } from './parse-context.js';
 import { guard } from './pki-errors.js';
-import { PKI_INPUT_EXTENSIONS, resolveInputFile } from './sandbox.js';
+import { PKI_INPUT_EXTENSIONS, readInputFile } from './sandbox.js';
 
 /** PEM labels by object kind (RFC 7468 §5–§13, plus the common legacy forms). */
 export const LABELS = {
@@ -127,10 +126,8 @@ async function readBytes(input: PkiInputFields, what: string, ctx: ParseContext)
     if (input.path === undefined) {
         throw new ToolError('VALIDATION_ERROR', `${what}: pass exactly one of pem / derBase64 / path`, { path: what });
     }
-    const { resolved, size } = await resolveInputFile(input.path, PKI_INPUT_EXTENSIONS, `${what}.path`);
-    assertInputWithin(size, ctx.maxInputBytes, `${what}.path '${input.path}'`);
-    const buf = await fs.readFile(resolved);
-    return { bytes: new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength), source: input.path };
+    const { bytes } = await readInputFile(input.path, PKI_INPUT_EXTENSIONS, `${what}.path`, (size) => assertInputWithin(size, ctx.maxInputBytes, `${what}.path '${input.path}'`));
+    return { bytes, source: input.path };
 }
 
 /** Decode every PEM block of a text, under the call's PEM mode and limits. */

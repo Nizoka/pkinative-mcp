@@ -187,6 +187,10 @@ describe('release-prepare: README badge and llms.txt', () => {
         expect(r.text).toContain('badge/pkinative-1.1-0a7e8c.svg');
         expect(r.text).toContain('badge/MCP-2026--07--28-6f42c1.svg');
         expect(bumpReadmeEngineBadge('# nothing', '1.1.0').matched).toBe(0);
+        // The badge is matched as a whole URL at a Markdown boundary: a look-alike under another host is left alone.
+        expect(bumpReadmeEngineBadge('[![x](https://evil.example/img.shields.io/badge/pkinative-1.0-0a7e8c.svg)](x)\n', '1.1.0').matched).toBe(0);
+        expect(bumpReadmeEngineBadge('see img.shields.io/badge/pkinative-1.0-0a7e8c.svg\n', '1.1.0').matched).toBe(0);
+        expect(bumpReadmeEngineBadge('https://img.shields.io/badge/pkinative-1.0-0a7e8c.svg', '1.1.0').text).toBe('https://img.shields.io/badge/pkinative-1.1-0a7e8c.svg');
     });
 
     it('bumps the Current release line, bold or plain', () => {

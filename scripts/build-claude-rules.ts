@@ -23,17 +23,36 @@
  * logic lives in scripts/lib/agent-config.ts and is unit-tested there.
  */
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { INSTRUCTIONS_DIR, RULES_DIR, diffRules, type RulesDiff } from './lib/agent-config.js';
+
+/** The entries of `dir`, or none when it is absent — the listing decides, never a check before it. */
+function entriesOf(dir: string): string[] {
+    try {
+        return readdirSync(dir);
+    } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
+        throw err;
+    }
+}
+
+/** The text of `file`, or null when it is absent. */
+function readIfPresent(file: string): string | null {
+    try {
+        return readFileSync(file, 'utf8');
+    } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+        throw err;
+    }
+}
 
 /** `name → text` of every instruction file under `<root>/.github/instructions/`. */
 export function readInstructionSources(root: string): Record<string, string> {
     const dir = join(root, INSTRUCTIONS_DIR);
     const out: Record<string, string> = {};
-    if (!existsSync(dir)) return out;
-    for (const name of readdirSync(dir).filter((f) => f.endsWith('.instructions.md')).sort()) {
+    for (const name of entriesOf(dir).filter((f) => f.endsWith('.instructions.md')).sort()) {
         out[name] = readFileSync(join(dir, name), 'utf8');
     }
     return out;
@@ -43,8 +62,7 @@ export function readInstructionSources(root: string): Record<string, string> {
 export function readRuleFiles(root: string): Record<string, string> {
     const dir = join(root, RULES_DIR);
     const out: Record<string, string> = {};
-    if (!existsSync(dir)) return out;
-    for (const name of readdirSync(dir).filter((f) => f.endsWith('.md')).sort()) {
+    for (const name of entriesOf(dir).filter((f) => f.endsWith('.md')).sort()) {
         out[name] = readFileSync(join(dir, name), 'utf8');
     }
     return out;
@@ -61,7 +79,7 @@ export function writeClaudeRules(root: string, diff: RulesDiff = diffClaudeRules
     let written = 0;
     for (const [name, content] of Object.entries(diff.expected)) {
         const target = join(dir, name);
-        if (existsSync(target) && readFileSync(target, 'utf8') === content) continue;
+        if (readIfPresent(target) === content) continue;
         writeFileSync(target, content, 'utf8');
         written++;
     }
