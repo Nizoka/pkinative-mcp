@@ -194,7 +194,6 @@ const NOT_REACHABLE_WITH_FIXTURES: Readonly<Record<string, string>> = {
     PKI_DIAG_NAME_ATTRIBUTE_TOO_LONG: 'every fixture attribute is short; needs an attribute above its RFC 5280 upper bound (a 65-character CN)',
     PKI_DIAG_STRING_SIGNATURE: 'no fixture name attribute carries a leading signature octet; needs a DirectoryString starting with one',
     PKI_DIAG_STRING_ESCAPE_SEQUENCE: 'no fixture name attribute carries an ISO 2022 escape; needs a string with one',
-    PKI_DIAG_UNKNOWN_CRITICAL_EXTENSION_IN_CRL: 'not a registry code — placeholder never used',
     PKI_DIAG_NAME_CONSTRAINTS_NOT_CRITICAL: 'no fixture carries nameConstraints; needs a CA certificate with a non-critical nameConstraints (the hand-built value did not decode)',
     PKI_DIAG_NAME_CONSTRAINTS_IN_END_ENTITY: 'no fixture carries nameConstraints; needs an end-entity certificate carrying it',
     PKI_DIAG_NAME_CONSTRAINTS_MIN_MAX: 'no fixture carries nameConstraints; needs a GeneralSubtree with minimum / maximum',
@@ -240,8 +239,6 @@ const NOT_REACHABLE_WITH_FIXTURES: Readonly<Record<string, string>> = {
     PKI_DIAG_OCSP_NOCHECK_CRITICAL: 'the fixture responder certificate carries no ocspNoCheck; needs one marked critical (decode_extension decoded it without a diagnostic)',
     PKI_DIAG_KEY_KDF_ITERATIONS_LOW: 'the fixture PBES2 / PBMAC1 keys use OpenSSL 3.5 defaults; needs a PBKDF2 iteration count below the engine floor',
 };
-// A registry code can only be listed once; the placeholder above documents a name that is NOT a code and is dropped here.
-delete (NOT_REACHABLE_WITH_FIXTURES as Record<string, string>)['PKI_DIAG_UNKNOWN_CRITICAL_EXTENSION_IN_CRL'];
 
 describe('diagnostics inventory: the 42 fixtures through their readers', () => {
     const produced = new Map<string, Set<string>>();
@@ -371,5 +368,16 @@ describe('diagnostics inventory: the registry is covered', () => {
         expect(FIXTURE_REACHABLE).toHaveLength(2);
         expect(crafted).toHaveLength(30);
         expect(unreachable).toHaveLength(65);
+    });
+
+    it('B2-008: NOT_REACHABLE_WITH_FIXTURES lists registry codes only — no placeholder row, nothing deleted after the fact', () => {
+        // A row that is "not a registry code" reads as a 98th diagnostic to anyone counting the table; the
+        // table is the inventory, so every key is a code the vendored registry lists and every reason is a construction.
+        const registry = new Set<string>(PKI_DIAGNOSTIC_CODES);
+        for (const [code, reason] of Object.entries(NOT_REACHABLE_WITH_FIXTURES)) {
+            expect(registry.has(code), `${code} is not a registry code`).toBe(true);
+            expect(reason, code).not.toMatch(/placeholder|not a registry code/i);
+        }
+        expect(Object.keys(NOT_REACHABLE_WITH_FIXTURES)).not.toContain('PKI_DIAG_UNKNOWN_CRITICAL_EXTENSION_IN_CRL');
     });
 });

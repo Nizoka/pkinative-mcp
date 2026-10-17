@@ -369,6 +369,74 @@ describe('publish.yml', () => {
     });
 });
 
+// ── Certificate linters: one version, pinned in every place that names it ──
+
+describe('certificate linters pinned in lock-step (publish.yml, SECURITY-INSIGHTS.yml, CONTRIBUTING.md, the requirements file)', () => {
+    const publish = readWorkflow('publish.yml');
+    const zlintStep = (jobSteps(publish).get('publish') ?? []).find((s) => s.includes('Install zlint')) ?? '';
+    const zlintVersion = /ZLINT_VERSION:\s*(\d+\.\d+\.\d+)\s*$/m.exec(zlintStep)?.[1];
+    const zlintSha = /ZLINT_SHA256:\s*([0-9a-f]{64})\s*$/m.exec(zlintStep)?.[1];
+
+    it('A2-012: publish.yml pins zlint to one exact version and verifies the archive against a 64-hex SHA-256', () => {
+        expect(zlintVersion, 'ZLINT_VERSION').toMatch(/^\d+\.\d+\.\d+$/);
+        expect(zlintSha, 'ZLINT_SHA256').toMatch(/^[0-9a-f]{64}$/);
+        // The archive name derives from the version, the checksum is checked strictly, and the binary path the
+        // gate receives names the same version — a bump that forgets one of the three fails here.
+        expect(zlintStep).toContain('zlint_${ZLINT_VERSION}_Linux_x86_64.tar.gz');
+        expect(zlintStep).toContain('releases/download/v${ZLINT_VERSION}/${ARCHIVE}');
+        expect(zlintStep).toMatch(/echo "\$\{ZLINT_SHA256\}  \$\{RUNNER_TEMP\}\/\$\{ARCHIVE\}" \| sha256sum --check --strict/);
+        expect(publish).toContain(`zlint_${zlintVersion}_Linux_x86_64/zlint`);
+        expect((publish.match(/zlint_\d+\.\d+\.\d+_Linux_x86_64/g) ?? []).every((m) => m === `zlint_${zlintVersion}_Linux_x86_64`)).toBe(true);
+    });
+
+    it('A2-012: SECURITY-INSIGHTS.yml names the same zlint version, pinned by archive hash, under the publish gate', () => {
+        const insights = readText('.github', 'SECURITY-INSIGHTS.yml');
+        const entry = /- name: zlint\s*\n([\s\S]*?)(?=\n\s*- name: )/.exec(insights)?.[1];
+        expect(entry, 'a zlint tool entry').toBeDefined();
+        expect(entry).toContain(`v${zlintVersion}`);
+        expect(entry).toMatch(/archive hash/);
+        expect(entry).toMatch(/release:\s*true/);
+        // No other version is quoted in the zlint entry.
+        const quoted = [...(entry ?? '').matchAll(/\bv(\d+\.\d+\.\d+)\b/g)].map((m) => m[1]);
+        expect(quoted.length).toBeGreaterThan(0);
+        expect(new Set(quoted)).toEqual(new Set([zlintVersion]));
+        const pkilint = /- name: pkilint\s*\n([\s\S]*?)(?=\n\s*- name: )/.exec(insights)?.[1];
+        expect(pkilint, 'a pkilint tool entry').toBeDefined();
+        expect(pkilint).toContain('scripts/data/lint-python-requirements.txt');
+        expect(pkilint).toMatch(/release:\s*true/);
+    });
+
+    it('A2-012: CONTRIBUTING.md documents the same zlint version', () => {
+        const contributing = readText('CONTRIBUTING.md');
+        expect(contributing).toMatch(new RegExp(`zlint \\(v${escapeRegExp(zlintVersion ?? '')}\\b`));
+        const quoted = [...contributing.matchAll(/zlint \(v(\d+\.\d+\.\d+)/g)].map((m) => m[1]);
+        expect(new Set(quoted)).toEqual(new Set([zlintVersion]));
+    });
+
+    it('A2-012: pkilint is installed with --require-hashes from a requirements file where every requirement carries a sha256 hash', () => {
+        const pkilintStep = (jobSteps(publish).get('publish') ?? []).find((s) => s.includes('Install pkilint')) ?? '';
+        expect(pkilintStep).toMatch(/pip install --require-hashes --no-deps --only-binary :all: -r scripts\/data\/lint-python-requirements\.txt/);
+        const requirements = readText('scripts', 'data', 'lint-python-requirements.txt');
+        const lines = requirements.split('\n').map((l) => l.trim()).filter((l) => l !== '' && !l.startsWith('#'));
+        expect(lines.length).toBeGreaterThan(10);
+        const packages: Array<{ name: string; version: string; hashes: number }> = [];
+        for (const line of lines) {
+            const requirement = /^([A-Za-z0-9_.-]+)==([A-Za-z0-9_.!+-]+)\s*\\$/.exec(line);
+            const hash = /^--hash=sha256:[0-9a-f]{64}\s*(\\)?$/.exec(line);
+            expect(requirement !== null || hash !== null, `unexpected requirements line: ${line}`).toBe(true);
+            if (requirement) packages.push({ name: requirement[1], version: requirement[2], hashes: 0 });
+            else packages[packages.length - 1]!.hashes += 1;
+        }
+        for (const p of packages) expect(p.hashes, `${p.name}==${p.version} has no --hash=sha256:`).toBeGreaterThan(0);
+        // pkilint itself is there, as a wheel (sdist builds are refused by --only-binary) with its hash.
+        const pkilint = packages.find((p) => p.name === 'pkilint');
+        expect(pkilint).toBeDefined();
+        expect(pkilint!.version).toMatch(/^\d+\.\d+\.\d+$/);
+        // The header documents the install line the workflow runs — the two cannot drift silently.
+        expect(requirements).toContain('pip install --require-hashes --no-deps --only-binary :all: -r');
+    });
+});
+
 describe('package.json publish settings', () => {
     const pkg = JSON.parse(readText('package.json')) as {
         publishConfig?: Record<string, unknown>;

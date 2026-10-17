@@ -3,10 +3,14 @@
 // classifiers — fed inline output, nothing spawned.
 
 import { describe, it, expect } from 'vitest';
+import { resolve } from 'node:path';
 
 import {
-    COMMANDS, COMMAND_IDS, classifyCmsVerify, classifyDump, classifyReqVerify, classifyVerify, judgeOpensslVersion, locateOpenssl, parseOpensslVersion,
+    COMMANDS, COMMAND_IDS, classifyCmsVerify, classifyDump, classifyReqVerify, classifyVerify, judgeOpensslVersion, locateOpenssl, locateOpensslOrReason,
+    opensslMissing, parseOpensslVersion,
 } from '../../scripts/lib/interop-tools.js';
+
+const ROOT = resolve(import.meta.dirname, '..', '..');
 
 describe('interop-tools: version', () => {
     it('parses the first line of `openssl version`', () => {
@@ -33,6 +37,26 @@ describe('interop-tools: locate', () => {
         expect(locateOpenssl({ env: { OPENSSL_BIN: '/nowhere' }, exists: () => false, probePath: () => '/usr/bin/openssl' })).toBeNull();
         expect(locateOpenssl({ env: {}, exists: () => false, probePath: () => '/usr/bin/openssl' })).toBe('/usr/bin/openssl');
         expect(locateOpenssl({ env: { OPENSSL_BIN: '  ' }, exists: () => false, probePath: () => null })).toBeNull();
+    });
+
+    it('A2-060: a dangling OPENSSL_BIN is reported with its value, never as "openssl not on PATH"', () => {
+        // The verifier's case: OPENSSL_BIN names a file that is not there while OpenSSL 3 sits on PATH.
+        const dangling = { env: { OPENSSL_BIN: 'C:/nope/openssl.exe' }, exists: () => false, probePath: () => '/usr/bin/openssl' };
+        expect(locateOpensslOrReason(dangling)).toEqual({ bin: null, source: 'override', reason: 'OPENSSL_BIN=C:/nope/openssl.exe is not an executable' });
+        expect(opensslMissing(dangling)).toBe('OPENSSL_BIN=C:/nope/openssl.exe is not an executable');
+        expect(opensslMissing(dangling)).not.toBe('openssl not on PATH');
+        // An override that exists is taken; a PATH hit is reported as such; nothing anywhere is the PATH wording.
+        expect(locateOpensslOrReason({ env: { OPENSSL_BIN: '/opt/openssl/bin/openssl' }, exists: () => true, probePath: () => null })).toEqual({ bin: '/opt/openssl/bin/openssl', source: 'override', reason: null });
+        expect(locateOpensslOrReason({ env: {}, exists: () => false, probePath: () => '/usr/bin/openssl' })).toEqual({ bin: '/usr/bin/openssl', source: 'path', reason: null });
+        expect(locateOpensslOrReason({ env: {}, exists: () => false, probePath: () => null })).toEqual({ bin: null, source: 'path', reason: 'openssl not on PATH' });
+        expect(opensslMissing({ env: {}, exists: () => false, probePath: () => null })).toBe('openssl not on PATH');
+    });
+
+    it('A2-060: an OPENSSL_BIN that exists but does not answer `openssl version` is named too', () => {
+        // package.json is a regular file and not a program: the spawn fails or exits non-zero on every platform.
+        const notAProgram = resolve(ROOT, 'package.json');
+        const reason = opensslMissing({ env: { OPENSSL_BIN: notAProgram }, exists: () => true, probePath: () => null });
+        expect(reason).toBe(`OPENSSL_BIN=${notAProgram} does not answer \`openssl version\``);
     });
 });
 

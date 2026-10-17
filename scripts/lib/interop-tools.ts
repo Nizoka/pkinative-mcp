@@ -15,7 +15,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { statSync } from 'node:fs';
 
 // ── Locate and qualify the binary ───────────────────────────────────
 
@@ -24,6 +24,7 @@ export const OPENSSL_BIN_ENV = 'OPENSSL_BIN';
 
 export interface LocateDeps {
     readonly env: NodeJS.ProcessEnv;
+    /** True when `p` is an existing regular file (a directory or a dangling path is not an executable). */
     readonly exists: (p: string) => boolean;
     /** `which` / `where openssl` — the first path or null. */
     readonly probePath: () => string | null;
@@ -31,7 +32,13 @@ export interface LocateDeps {
 
 const DEFAULT_LOCATE: LocateDeps = {
     env: process.env,
-    exists: existsSync,
+    exists: (p) => {
+        try {
+            return statSync(p).isFile();
+        } catch {
+            return false;
+        }
+    },
     probePath: () => {
         const probe = spawnSync(process.platform === 'win32' ? 'where' : 'which', ['openssl'], { encoding: 'utf8', windowsHide: true });
         if (probe.status === 0 && probe.stdout.trim().length > 0) return probe.stdout.trim().split(/\r?\n/)[0] ?? null;
@@ -39,11 +46,32 @@ const DEFAULT_LOCATE: LocateDeps = {
     },
 };
 
-/** `OPENSSL_BIN` first (must exist), then whatever `openssl` is on PATH. Null when nothing is found. */
-export function locateOpenssl(deps: LocateDeps = DEFAULT_LOCATE): string | null {
+/**
+ * Where the binary came from and, when it was not found, why — the reason
+ * the gate prints after SKIP. An `OPENSSL_BIN` that does not resolve to an
+ * executable is reported as such, with its value: PATH is never consulted
+ * behind an explicit override, so "openssl not on PATH" would be wrong
+ * (A2-060: the override was dangling while OpenSSL 3 sat on PATH).
+ */
+export type Located =
+    | { readonly bin: string; readonly source: 'override' | 'path'; readonly reason: null }
+    | { readonly bin: null; readonly source: 'override' | 'path'; readonly reason: string };
+
+/** `OPENSSL_BIN` first (it must name an executable file), then whatever `openssl` is on PATH. */
+export function locateOpensslOrReason(deps: LocateDeps = DEFAULT_LOCATE): Located {
     const override = deps.env[OPENSSL_BIN_ENV];
-    if (override !== undefined && override.trim() !== '') return deps.exists(override) ? override : null;
-    return deps.probePath();
+    if (override !== undefined && override.trim() !== '') {
+        if (deps.exists(override)) return { bin: override, source: 'override', reason: null };
+        return { bin: null, source: 'override', reason: `${OPENSSL_BIN_ENV}=${override} is not an executable` };
+    }
+    const bin = deps.probePath();
+    if (bin === null) return { bin: null, source: 'path', reason: 'openssl not on PATH' };
+    return { bin, source: 'path', reason: null };
+}
+
+/** The located binary, or null when nothing is found (see {@link locateOpensslOrReason} for the reason). */
+export function locateOpenssl(deps: LocateDeps = DEFAULT_LOCATE): string | null {
+    return locateOpensslOrReason(deps).bin;
 }
 
 export interface OpensslVersion {
@@ -82,10 +110,13 @@ export function opensslVersion(bin: string | null = locateOpenssl()): OpensslVer
 }
 
 /** The gate's skip condition: a reason to skip the OpenSSL steps, or null when a usable OpenSSL 3.x is present. */
-export function opensslMissing(): string | null {
-    const bin = locateOpenssl();
-    if (bin === null) return 'openssl not on PATH';
-    return judgeOpensslVersion(opensslVersion(bin));
+export function opensslMissing(deps: LocateDeps = DEFAULT_LOCATE): string | null {
+    const located = locateOpensslOrReason(deps);
+    if (located.bin === null) return located.reason;
+    const version = opensslVersion(located.bin);
+    // An override that exists but does not answer is named too; a PATH hit that does not answer reads as absent.
+    if (version === null && located.source === 'override') return `${OPENSSL_BIN_ENV}=${located.bin} does not answer \`openssl version\``;
+    return judgeOpensslVersion(version);
 }
 
 // ── Running ─────────────────────────────────────────────────────────
@@ -106,8 +137,9 @@ export interface RunOptions {
 
 /** Run `openssl <args>`; stdout and stderr captured as UTF-8. Never throws: a spawn failure is `status: null` with the message on stderr. */
 export function runOpenssl(args: readonly string[], options: RunOptions = {}): OpensslRun {
-    const bin = options.bin ?? locateOpenssl();
-    if (bin === null) return { status: null, stdout: '', stderr: 'openssl not on PATH' };
+    const located: Located = options.bin !== undefined ? { bin: options.bin, source: 'override', reason: null } : locateOpensslOrReason();
+    if (located.bin === null) return { status: null, stdout: '', stderr: located.reason };
+    const bin = located.bin;
     const r = spawnSync(bin, [...args], {
         encoding: 'utf8', windowsHide: true, maxBuffer: 64 * 1024 * 1024, timeout: options.timeoutMs ?? 60_000,
         ...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
