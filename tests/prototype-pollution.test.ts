@@ -78,10 +78,17 @@ describe('prototype pollution', () => {
         expect(await call('verify_certificate_chain', { leaf: LEAF, trustAnchors: [ROOT], at: AT, serverName: poison() }, 'serverName')).toBe('VALIDATION_ERROR');
     });
 
+    it('A2-052: a prototype segment anywhere in a fields path is VALIDATION_ERROR, on the wire too', async () => {
+        for (const fields of [['__proto__'], ['subject.constructor'], ['prototype.x'], ['a.__proto__.b']]) {
+            expect(await call('inspect_certificate', { certificate: LEAF, fields }, JSON.stringify(fields))).toBe('VALIDATION_ERROR');
+        }
+        expect(await call('inspect_certificate', { certificate: LEAF, fields: ['subjectString', 'extensions.kind'] }, 'legit')).toBeNull();
+    });
+
     it('a poisoned limits block, signer or projection is refused', async () => {
         expect(await call('inspect_certificate', { certificate: LEAF, limits: poison() }, 'limits')).toBe('VALIDATION_ERROR');
         expect(await call('create_certificate', { spec: { subject: { CN: 'x' }, notBefore: AT }, signer: withPoison(ED) }, 'signer')).toBe('VALIDATION_ERROR');
-        expect(await call('inspect_certificate', { certificate: LEAF, fields: ['__proto__', 'constructor.prototype'] }, 'fields')).toBeNull();
+        expect(await call('inspect_certificate', { certificate: LEAF, fields: ['__proto__', 'constructor.prototype'] }, 'fields')).toBe('VALIDATION_ERROR');
         expect(await call('inspect_certificate', { certificate: LEAF, verbosity: '__proto__' }, 'verbosity')).toBe('VALIDATION_ERROR');
     });
 

@@ -154,9 +154,10 @@ function projectionMeta(full: Record<string, unknown>, summary: Record<string, u
     const fields = readFields(input);
     if (fields.length === 0) return {};
     const base = readVerbosity(input) === 'summary' ? summary : full;
+    // B2-053: a path matches when it selects something, at any depth — not when only its head exists.
     const unmatched = fields.filter((f) => {
-        const head = f.split('.')[0]?.trim() ?? '';
-        return head.length > 0 && !(head in base);
+        const picked = selectFields(base, [f]);
+        return picked === null || typeof picked !== 'object' || Object.keys(picked as object).length === 0;
     });
     return unmatched.length === 0 ? {} : { _meta: { unmatchedFields: unmatched, availableFields: Object.keys(base) } };
 }
@@ -250,10 +251,15 @@ function buildErrorResult(err: unknown, toolName: string): CallToolResult {
             _meta: { error: { code: err.code, message: err.message, ...(err.data !== undefined ? { data: err.data } : {}) } },
         };
     }
+    // A2-044: nothing leaves the boundary uncoded — an escaped throw is ENGINE_ERROR with its class and, for an
+    // exhausted call stack (a raised limits.maxDepth on a deeply nested input), the remedy.
     const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof RangeError && /call stack/i.test(message);
+    const data = { errorClass: 'internal', ...(stack ? { remedy: 'lower limits.maxDepth (the input nests deeper than this process can walk)' } : {}) };
     return {
-        content: [{ type: 'text', text: `${toolName} failed: ${message}` }],
+        content: [{ type: 'text', text: `${toolName} failed [ENGINE_ERROR]: ${message}` }],
         isError: true,
+        _meta: { error: { code: 'ENGINE_ERROR', message, data } },
     };
 }
 
@@ -295,7 +301,7 @@ const OPEN_KEYS_SAFELY_RECIPE = `Keys and PKCS#12 without leaking a byte (inspec
 • Describe first, without a password: inspect_private_key { key } tells the format (pkcs8 / encrypted-pkcs8), the algorithm and curve, the PBES2 parameters; inspect_pkcs12 { pkcs12 } tells the MAC kind and lists the bags (certificates by subject, keys by algorithm). No report, ever, carries a key byte: every key view is an allow-list.
 • Open: open_pkcs12 { pkcs12, password } → integrity ('verified' | 'unverified' | 'mismatch'), the keys as non-extractable Web Crypto handles (described, never exported), certificates and CRLs; exportCertificates:true returns a PEM bundle of the certificates only. inspect_private_key { key, tryImport:true, password, keyType } proves an encrypted key is usable.
 • Doctrine: PBES2 (PBKDF2 + AES-CBC) and PBMAC1 only. A legacy RC2 / 3DES file (openssl -legacy) is refused with the OpenSSL 3.4 conversion remedy; the RFC 7292 Appendix B MAC is never computed — allowUnverifiedIntegrity:true opens such a file only when you trust its origin. An RSA key in a PKCS#12 needs rsaScheme to be imported (there is no default).
-• Passwords: pass the password input (it lands in the host's transcript) or set PKINATIVE_MCP_PASSWORD in the server environment (it does not). Never both. A call carrying a password is never cached; a wrong password is PKI_CRYPTO_DECRYPTION_FAILED and the value is never echoed.
+• Passwords: pass the password input (it lands in the host's transcript) or set PKINATIVE_MCP_PASSWORD in the server environment (it does not). Never both. A call carrying a password is never cached; a wrong password is PKI_CRYPTO_DECRYPTION_FAILED on inspect_private_key / inspect_pkcs12 and the verdict integrity:'mismatch' (PKI_REASON_PKCS12_MAC_MISMATCH) on open_pkcs12; the value is never echoed.
 • Key-bearing files (.key .p8 .p12 .pfx) in the sandbox are never listed by resources/list nor served by resources/read; nothing in this server writes one.`;
 
 /**

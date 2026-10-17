@@ -5,6 +5,8 @@
  */
 import { z } from 'zod';
 
+import { FIELD_PATH_PATTERN } from '../projection.js';
+
 import { MAX_FIELDS_PATHS } from '../caps.js';
 import { ToolError } from '../errors.js';
 import { ParseShape } from '../parse-context.js';
@@ -16,7 +18,7 @@ export { ParseShape };
 /** `verbosity` / `fields` (see `PROJECTION_INPUT_PROPERTIES`). */
 export const ProjectionShape = {
     verbosity: z.enum(['full', 'summary']).default('full'),
-    fields: z.array(z.string().min(1)).max(MAX_FIELDS_PATHS).optional(),
+    fields: z.array(z.string().min(1).regex(new RegExp(FIELD_PATH_PATTERN))).max(MAX_FIELDS_PATHS).optional(),
 };
 
 /** `allowSha1` (see `ALLOW_SHA1_INPUT_PROPERTY`). */

@@ -44,6 +44,32 @@ const PRODUCING_TOOLS = ['create_certificate', 'create_csr', 'sign_cms', 'create
 
 const ALL_PROMPTS = ['draft_issue_workflow', 'governance_contract', 'issue_certificate', 'offline_revocation', 'open_keys_safely', 'sign_and_timestamp', 'verify_before_trust'];
 
+describe('B2-053 / A2-044: projection and the error boundary', () => {
+    it('B2-053: a nested fields path that matches nothing is reported in _meta.unmatchedFields, next to the paths that matched', async () => {
+        const r = await callToolDirect('inspect_certificate', { certificate: fixtureInput('leaf.crt.pem'), fields: ['subjectString', 'subject.nope', 'extensions.kind', 'validity.notBefore.nowhere'] });
+        expect(r.isError).not.toBe(true);
+        const meta = r._meta as { unmatchedFields?: string[]; availableFields?: string[] } | undefined;
+        expect(meta?.unmatchedFields).toEqual(['subject.nope', 'validity.notBefore.nowhere']);
+        expect(Object.keys(r.structuredContent as object).sort()).toEqual(['extensions', 'subjectString']);
+    });
+
+    it('A2-044: a call-stack exhaustion under a raised limits.maxDepth is a coded ENGINE_ERROR naming the remedy, never an uncoded failure', async () => {
+        // 6000 nested SEQUENCEs around one NULL, lengths in long form where needed.
+        let der = Buffer.from([0x05, 0x00]);
+        for (let i = 0; i < 6000; i++) {
+            const len = der.length;
+            const header = len < 0x80 ? Buffer.from([0x30, len]) : len < 0x100 ? Buffer.from([0x30, 0x81, len]) : len < 0x10000 ? Buffer.from([0x30, 0x82, len >> 8, len & 0xff]) : Buffer.from([0x30, 0x83, len >> 16, (len >> 8) & 0xff, len & 0xff]);
+            der = Buffer.concat([header, der]);
+        }
+        const r = await callToolDirect('decode_asn1', { input: { derBase64: der.toString('base64') }, limits: { maxDepth: 10_000, maxNodes: 20_000 } });
+        expect(r.isError).toBe(true);
+        const error = (r._meta as { error?: { code?: string; data?: { remedy?: string } } } | undefined)?.error;
+        expect(error?.code).toMatch(/^(ENGINE_ERROR|PKI_[A-Z_]+)$/);
+        if (error?.code === 'ENGINE_ERROR') expect(error.data?.remedy).toContain('maxDepth');
+        expect((r.content[0] as { text: string }).text).toMatch(/failed \[[A-Z_]+\]:/);
+    }, 60_000);
+});
+
 describe('server', () => {
     beforeAll(async () => {
         delete process.env[OUTPUT_ENV];

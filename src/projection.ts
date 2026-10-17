@@ -25,6 +25,9 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  * Normalise a caller-supplied `fields` value (array of dot-paths, or a single
  * comma-separated string) into trimmed, non-empty dot-path strings.
  */
+/** A dot-path whose segments are never a prototype key (A2-052). */
+export const FIELD_PATH_PATTERN = '^(?!(?:[^.]*\\.)*(?:__proto__|constructor|prototype)(?:\\.|$)).+$';
+
 export function parseFieldList(fields: unknown): string[] {
     const raw: string[] = [];
     if (typeof fields === 'string') {
@@ -128,7 +131,7 @@ export const PROJECTION_INPUT_PROPERTIES = {
     fields: {
         type: 'array',
         maxItems: 16,
-        items: { type: 'string', minLength: 1 },
+        items: { type: 'string', minLength: 1, pattern: FIELD_PATH_PATTERN },
         description: "Dot-paths to keep after verbosity (arrays map over elements); unmatched paths land in _meta.unmatchedFields.",
     },
 } as const;
