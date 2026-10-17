@@ -114,6 +114,24 @@ describe('check_crl_revocation', () => {
         });
     });
 
+    describe('B2-083: a delta whose signature fails is not applied', () => {
+        it('B2-083: a delta CRL issued by another CA is refused as evidence — valid false, PKI_REASON_REVOCATION_UNKNOWN on delta, deltaSignatureVerified false', async () => {
+            const result = await callToolDirect('check_crl_revocation', { certificate: fixtureInput('leaf.crt.pem'), crl: fixtureInput('inter.crl.pem'), delta: fixtureInput('ed25519-delta.crl.der'), issuer: fixtureInput('inter.crt.pem'), at: AT });
+            expect(result.isError).not.toBe(true);
+            const s = result.structuredContent as { valid: boolean; deltaSignatureVerified: boolean | null; reasons: Array<{ code: string; path: string }> };
+            expect(s.valid).toBe(false);
+            expect(s.deltaSignatureVerified).toBe(false);
+            expect(s.reasons.find((r) => r.path === 'delta')?.code).toBe('PKI_REASON_REVOCATION_UNKNOWN');
+            assertResultClean(result);
+        });
+
+        it('B2-081: the issuer description names a real reason code', () => {
+            const text = JSON.stringify(CHECK_CRL_REVOCATION_TOOL.inputSchema);
+            expect(text).not.toContain('PKI_REASON_CRL_SIGNATURE_UNVERIFIED');
+            expect(text).toContain('PKI_REASON_REVOCATION_UNKNOWN');
+        });
+    });
+
     describe('projection', () => {
         it('summary keeps the scalars only', async () => {
             const r = await checkCrlRevocation({ certificate: LEAF, crl: CRL, issuer: INTER, at: AT });

@@ -37,7 +37,7 @@ export const CHECK_CRL_REVOCATION_INPUT_SCHEMA = {
         certificate: pkiInputSchema('The certificate to check'),
         crl: pkiInputSchema('The base CRL (X509 CRL PEM or DER)'),
         delta: pkiInputSchema('A delta CRL applied over the base', ' Must carry a deltaCRLIndicator (VALIDATION_ERROR otherwise); its base CRL number is checked against the base.'),
-        issuer: pkiInputSchema('The CRL issuer certificate', ' The base (and delta) signatures are verified against it and reported to the engine as signatureVerified. Omitted: the signatures are NOT verified and the engine refuses the list (PKI_REASON_CRL_SIGNATURE_UNVERIFIED) — the verdict is then only a dry run.'),
+        issuer: pkiInputSchema('The CRL issuer certificate', ' The base (and delta) signatures are verified against it and reported to the engine as signatureVerified. Omitted: the signatures are NOT verified and the engine does not accept the list as evidence (valid:false, PKI_REASON_REVOCATION_UNKNOWN) — the verdict is then only a dry run.'),
         at: TRUST_INPUT_PROPERTIES.at,
         ...STALE_TOLERANCE_INPUT_PROPERTY,
         ...ALLOW_SHA1_INPUT_PROPERTY,
@@ -113,6 +113,12 @@ export async function checkCrlRevocation(rawInput: unknown): Promise<CrlRevocati
         : guardAsync(`Cannot verify the ${what} signature`, () => verifyCrlSignature(list, issuer as Certificate, { allowSha1: input.allowSha1 })));
     const signatureVerified = await verify(base.crl, 'CRL');
     const deltaVerified = delta === undefined ? undefined : await verify(delta.crl, 'delta CRL');
+    // B2-083: a delta whose signature fails against issuer is never applied (the engine would take it as is):
+    // the status is then unknown, reported as a reason on the delta.
+    const deltaApplied = delta !== undefined && deltaVerified !== false;
+    const deltaRefused: Record<string, string>[] = delta !== undefined && deltaVerified === false
+        ? [{ code: 'PKI_REASON_REVOCATION_UNKNOWN', message: `The delta CRL (${delta.obj.source}) does not verify against issuer: it was not applied, so the revocation status is unknown.`, standard: 'RFC 5280 §6.3.3', path: 'delta' }]
+        : [];
     const at = resolveInstant(input.at, 'at');
     const reasons = guard('Cannot check revocation', () => checkRevocation({
         certificate,
@@ -121,13 +127,14 @@ export async function checkCrlRevocation(rawInput: unknown): Promise<CrlRevocati
         at: at.ms,
         ...(signatureVerified !== undefined ? { signatureVerified } : {}),
         ...(input.staleTolerance !== undefined ? { staleTolerance: input.staleTolerance } : {}),
-        ...(delta !== undefined ? { delta: { crl: delta.crl, crlDer: delta.obj.der, ...(deltaVerified !== undefined ? { signatureVerified: deltaVerified } : {}) } } : {}),
+        ...(deltaApplied ? { delta: { crl: delta.crl, crlDer: delta.obj.der, ...(deltaVerified !== undefined ? { signatureVerified: deltaVerified } : {}) } } : {}),
         ...(ctx.options.limits !== undefined ? { limits: ctx.options.limits } : {}),
         onDiagnostic: ctx.options.onDiagnostic,
     }));
+    const rows = [...deltaRefused, ...reasonsView(reasons)];
     return withDiagnostics({
-        valid: reasons.length === 0,
-        reasons: reasonsView(reasons),
+        valid: rows.length === 0,
+        reasons: rows,
         signatureVerified: signatureVerified ?? null,
         ...(delta !== undefined ? { deltaSignatureVerified: deltaVerified ?? null, deltaCrlNumber: delta.crl.crlNumber?.toString(10) ?? null } : {}),
         evaluatedAt: at.iso,

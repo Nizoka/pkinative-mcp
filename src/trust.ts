@@ -29,7 +29,7 @@ export const TRUST_INPUT_PROPERTIES = {
     crls: pkiBundleSchema('CRLs (DER or X509 CRL PEM) for offline revocation', ' Optional; this server never fetches a CRL — pass the bytes you obtained.'),
     ocspResponses: pkiBundleSchema('OCSP responses (DER) for offline revocation', ' Optional; this server never queries a responder — pass the bytes you obtained.'),
     at: instantSchema('The instant the verdict is evaluated at.'),
-    requireRevocation: { type: 'boolean', default: false, description: 'Require fresh revocation evidence for every certificate below the anchor (PKI_REASON_REVOCATION_UNKNOWN otherwise); default false = revocation is checked when evidence is given.' },
+    requireRevocation: { type: 'boolean', default: false, description: 'Require fresh revocation evidence for the end-entity certificate (PKI_REASON_REVOCATION_UNKNOWN otherwise — the engine demands it for the leaf; an intermediate is judged from the evidence you pass); default false = revocation is checked when evidence is given.' },
     purposes: { type: 'array', maxItems: 16, items: { type: 'string', minLength: 1 }, description: `Extended key usages the leaf must allow: ${PURPOSE_NAMES.join(', ')}, any, or a dotted OID.` },
     policy: {
         type: 'object',
