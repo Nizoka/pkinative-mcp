@@ -1,0 +1,6 @@
+{
+    "description": "Write the certificate bundle of a .p12 to a sandbox .pem file (never overwritten); the result carries a resource_link. Documentation only: file mode is not executed by the examples runner.",
+    "tool": "open_pkcs12",
+    "arguments": { "pkcs12": { "path": "fixtures/leaf.p12" }, "password": "test-only-password", "exportCertificates": true, "outputMode": "file", "outputPath": "out/leaf-chain.pem" },
+    "documentationOnly": true
+}

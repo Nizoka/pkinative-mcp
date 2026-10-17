@@ -1,0 +1,5 @@
+{
+    "description": "Verify the MAC and list every bag of a PKCS#12 holding an UNENCRYPTED keyBag: the key is described by its algorithm and curve only, never by its bytes.",
+    "tool": "inspect_pkcs12",
+    "arguments": { "pkcs12": { "path": "fixtures/plain-keybag.p12" }, "password": "test-only-password", "fields": ["macVerified", "opened.path", "opened.bags.kind", "opened.bags.key.kind", "opened.bags.certificate.subject"] }
+}

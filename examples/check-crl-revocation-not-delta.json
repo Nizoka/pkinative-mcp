@@ -1,0 +1,12 @@
+{
+    "description": "A base CRL passed as the delta is refused before any verdict: VALIDATION_ERROR naming the missing deltaCRLIndicator.",
+    "tool": "check_crl_revocation",
+    "expectError": "VALIDATION_ERROR",
+    "arguments": {
+        "certificate": { "path": "fixtures/ed25519.crt.pem" },
+        "crl": { "path": "fixtures/ed25519.crl.der" },
+        "delta": { "path": "fixtures/ed25519.crl.der" },
+        "issuer": { "path": "fixtures/ed25519.crt.pem" },
+        "at": "2027-01-01T00:00:00Z"
+    }
+}

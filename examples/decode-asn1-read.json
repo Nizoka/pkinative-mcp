@@ -1,0 +1,12 @@
+{
+    "description": "Read tbsCertificate.serialNumber (nodePath 0.1) with the INTEGER reader: the value comes back as a decimal string.",
+    "tool": "decode_asn1",
+    "arguments": {
+        "input": {
+            "path": "fixtures/leaf.crt.der"
+        },
+        "nodePath": "0.1",
+        "read": "integer",
+        "verbosity": "summary"
+    }
+}

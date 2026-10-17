@@ -1,0 +1,5 @@
+{
+    "description": "What is this key protected with? inspect_private_key describes an encrypted PKCS#8 key (scheme, PBKDF2 iterations, AES key size) without any password and without a key byte.",
+    "tool": "inspect_private_key",
+    "arguments": { "key": { "path": "fixtures/leaf.key.enc.pem" } }
+}

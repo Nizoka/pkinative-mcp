@@ -1,0 +1,5 @@
+{
+    "description": "Is the leaf valid for a.wild.example.test? Its subjectAltName carries *.wild.example.test, so the verdict is valid under the default allowWildcards.",
+    "tool": "check_certificate_name",
+    "arguments": { "certificate": { "path": "fixtures/leaf.crt.pem" }, "host": "a.wild.example.test", "verbosity": "summary" }
+}

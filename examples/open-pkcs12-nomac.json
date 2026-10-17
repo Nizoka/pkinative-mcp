@@ -1,0 +1,5 @@
+{
+    "description": "A PKCS#12 without a MAC is a negative verdict (PKI_REASON_PKCS12_INTEGRITY_UNVERIFIED) unless its origin is trusted and allowUnverifiedIntegrity:true waives the check; the report still says integrity 'unverified'.",
+    "tool": "open_pkcs12",
+    "arguments": { "pkcs12": { "path": "fixtures/nomac.p12" }, "password": "test-only-password", "allowUnverifiedIntegrity": true, "verbosity": "summary" }
+}

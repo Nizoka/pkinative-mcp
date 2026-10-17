@@ -1,0 +1,6 @@
+{
+    "description": "From an encrypted PKCS#8 key: the password unlocks it and subjectPublicKey (the matching PUBLIC KEY) names the key type and the key to certify; written as a sandbox .csr. Documentation only: file mode is not executed by the examples runner.",
+    "tool": "create_csr",
+    "arguments": { "spec": { "subject": { "CN": "svc.example.test" } }, "subjectPublicKey": { "path": "fixtures/leaf.pub.pem" }, "signer": { "key": { "path": "fixtures/leaf.key.enc.pem" }, "password": "test-only-password" }, "encoding": "der", "outputMode": "file", "outputPath": "requests/svc.csr" },
+    "documentationOnly": true
+}

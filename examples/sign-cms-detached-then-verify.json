@@ -1,0 +1,28 @@
+{
+    "description": "Sign a file detached with the test leaf (chain embedded, signing time pinned), then verify the new .p7s against the root with the content it covers.",
+    "steps": [
+        {
+            "tool": "sign_cms",
+            "arguments": {
+                "content": { "path": "fixtures/content.txt" },
+                "detached": true,
+                "certificate": { "path": "fixtures/leaf.crt.pem" },
+                "chain": [{ "path": "fixtures/inter.crt.pem" }],
+                "signingTime": "2027-01-01T00:00:00Z",
+                "signer": { "key": { "path": "fixtures/leaf.key.pem" } }
+            }
+        },
+        {
+            "tool": "verify_cms",
+            "arguments": {
+                "signedData": { "derBase64": "<base64 from step 1>" },
+                "content": { "path": "fixtures/content.txt" },
+                "trustAnchors": [{ "path": "fixtures/root.crt.pem" }],
+                "requireSigningCertificate": true,
+                "requireAlgorithmProtection": true,
+                "at": "2027-01-01T00:00:00Z",
+                "verbosity": "summary"
+            }
+        }
+    ]
+}

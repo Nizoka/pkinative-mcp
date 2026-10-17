@@ -1,0 +1,10 @@
+{
+    "description": "A counter time-stamp stamps the SIGNATURE VALUE, not the document: the fixture response stamps content.txt, so the imprint check refuses it before anything is written (VALIDATION_ERROR, data.detail PKI_REASON_TSP_IMPRINT_MISMATCH, with the remedy).",
+    "tool": "amend_cms",
+    "expectError": "VALIDATION_ERROR",
+    "arguments": {
+        "signedData": { "path": "fixtures/attached.p7s" },
+        "operation": "add-timestamp",
+        "token": { "path": "fixtures/content.tsr" }
+    }
+}

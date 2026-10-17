@@ -1,0 +1,11 @@
+{
+    "description": "The OCSP request for the leaf with a SHA-256 CertID and a random RFC 8954 nonce, as inline hex: keep summary.nonceHex to demand it back with check_ocsp_status, and summary.certIdHex to match the answer. POST the bytes yourself to the responder named by the certificate's authorityInfoAccess.",
+    "tool": "create_ocsp_request",
+    "arguments": {
+        "certificate": { "path": "fixtures/leaf.crt.pem" },
+        "issuer": { "path": "fixtures/inter.crt.pem" },
+        "hashAlgorithm": "SHA-256",
+        "nonce": "random",
+        "encoding": "hex"
+    }
+}

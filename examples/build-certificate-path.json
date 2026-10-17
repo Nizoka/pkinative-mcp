@@ -1,0 +1,11 @@
+{
+    "description": "Path discovery from the leaf through the intermediate to the root, signatures NOT checked: found:true, structuralReasons empty, reasons[] holds only the PKI_REASON_SIGNATURE_NOT_CHECKED markers.",
+    "tool": "build_certificate_path",
+    "arguments": {
+        "leaf": { "path": "fixtures/leaf.crt.pem" },
+        "candidates": [{ "path": "fixtures/inter.crt.pem" }],
+        "trustAnchors": [{ "path": "fixtures/root.crt.pem" }],
+        "at": "2027-01-01T00:00:00Z",
+        "verbosity": "summary"
+    }
+}

@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "pkinative-mcp AI Governance Configuration",
+  "description": "Machine-readable contract governing how AI coding agents may propose issues, contributions, and changes for pkinative-mcp. Agents that scan repository configuration on initialization MUST honour this file. See .github/AGENT_RULES.md for the human-and-agent-readable protocol. This contract also backs the `draft_governance_issue` MCP tool, which produces local, compliant issue drafts and NEVER submits them.",
+  "version": "1.0.0",
+  "spec_updated": "2026-10-13",
+  "applies_to": [
+    "pkinative",
+    "pkinative-cli",
+    "pkinative-mcp"
+  ],
+  "policy": {
+    "automatic_issue_reporting": false,
+    "runtime_dependencies_allowed": false,
+    "human_in_the_loop_mandatory": true,
+    "autonomous_github_writes_allowed": false,
+    "outbound_network_allowed": false,
+    "outbound_network": {
+      "default": "none",
+      "github": "never",
+      "telemetry": "never"
+    },
+    "telemetry_allowed": false,
+    "security_default_weakening_requires_human": true,
+    "deterministic_bytes_are_semver_major": true,
+    "anti_goals": [
+      "network (CRL / OCSP / TSA / AIA fetching)",
+      "key generation or key export",
+      "PKCS#8 / PKCS#12 / CRL / OCSP-response / time-stamp-response writers",
+      "secret-dependent cryptography in TypeScript (Web Crypto only)",
+      "SHA-1 or legacy PBES1 / RC2 / 3DES by default",
+      "engine filesystem I/O"
+    ],
+    "required_issue_fields": [
+      "minimal_reproduction",
+      "environment",
+      "expected_behavior"
+    ]
+  },
+  "human_in_the_loop": {
+    "role_of_agent": "draftsman",
+    "role_of_human": "reviewer and sole performer of GitHub writes",
+    "gate": "A human MUST explicitly review, sign off on, and trigger any GitHub issue, comment, PR, or release. The agent's authority ends at producing a local draft plus a compliance report. The pkinative-mcp server contains NO code path that can write to GitHub and NO network code path at all: it makes no outbound network call, ever, and never accepts a URL from a tool argument.",
+    "identity_integrity": "Any issue or PR is published under the human user's GitHub identity. The agent MUST remind the user of their shared responsibility for the content before submission.",
+    "draft_location": "PKINATIVE_MCP_OUTPUT_DIR (the draft_governance_issue tool with outputMode 'file' writes the .md inside the sandbox, nowhere else) -> .github/drafts/ (the human's review copy)",
+    "target_repositories": {
+      "pkinative": "engine behaviour — ASN.1 / PEM / X.509 / CRL / OCSP / CMS / PKCS#12 parsing, verification, the 22 limits, refusals",
+      "pkinative-cli": "command-line behaviour — flags, envelopes, exit codes",
+      "pkinative-mcp": "wrapper behaviour — schemas, sandbox, output modes, transport, projections, caps, secrets policy"
+    }
+  },
+  "pre_issue_checklist": [
+    "no_duplicate_open_or_closed_issue",
+    "zero_runtime_dependency_preserved",
+    "no_anti_goal_proposed",
+    "no_security_default_weakened_without_human_decision",
+    "no_secret_in_the_draft",
+    "local_minimal_reproduction_executed",
+    "expected_vs_actual_documented",
+    "environment_captured",
+    "target_repository_chosen"
+  ],
+  "compliance_report": {
+    "description": "The structured summary an agent MUST present to the user alongside every draft. The `draft_governance_issue` tool returns exactly these nine keys in structuredContent.compliance (camelCase, as returned; `cross_project_vocabulary` lists the snake_case names shared with pkinative and pkinative-cli).",
+    "required_fields": [
+      "zeroDependencyConfirmed",
+      "noSecretConfirmed",
+      "reproductionCommand",
+      "reproductionResult",
+      "duplicateSearchPerformed",
+      "affectedPackages",
+      "identityReminderShown",
+      "humanGate",
+      "environment"
+    ],
+    "cross_project_vocabulary": [
+      "zero_dependency_confirmed",
+      "no_secret_confirmed",
+      "reproduction_command",
+      "reproduction_result",
+      "duplicate_search_performed",
+      "affected_packages",
+      "identity_reminder_shown"
+    ]
+  },
+  "capability_manifest": {
+    "description": "Authoritative project context an agent SHOULD load before proposing changes.",
+    "sources": [
+      "AGENTS.md",
+      ".github/AGENT_RULES.md"
+    ],
+    "$comment": "on_demand: load lazily by topic. sources are loaded on every task and verify-docs (governance-sources) holds their total under 16 KiB; ecosystem.json is the counts manifest, needed only when a figure or version is touched; docs/AGENT_CONTRACT.md is the consumer-facing agent contract (tool catalogue, decision tree, token economy, error codes).",
+    "on_demand": [
+      "docs/assets/ecosystem.json",
+      "docs/AGENT_CONTRACT.md",
+      ".github/copilot-instructions.md",
+      ".github/instructions/",
+      "docs/guides/AI_GOVERNANCE.md",
+      "ROADMAP.md",
+      "SECURITY.md",
+      "llms.txt"
+    ]
+  },
+  "verification": {
+    "command": "npm run verify:issue -- .github/drafts/<draft>.md",
+    "advisory_in_ci": false,
+    "advisory_in_ci_note": "No CI job runs the verifier over .github/drafts/ (drafts are git-ignored work in progress); tests/governance.test.ts asserts that scripts/verify-issue.mjs and src/governance.ts apply the same policy. Run the command locally before presenting a draft.",
+    "blocks_submission_on_failure": true
+  },
+  "references": {
+    "zero_dependency_policy": "README.md",
+    "governance_guide": "docs/guides/AI_GOVERNANCE.md",
+    "conformance_gate": "docs/guides/CONFORMANCE.md",
+    "issue_templates": [
+      ".github/ISSUE_TEMPLATE"
+    ],
+    "draft_template": ".github/drafts/TEMPLATE.md"
+  }
+}

@@ -1,0 +1,16 @@
+{
+    "description": "A malformed node is refused naming its JSON path ($.children[0].value expects a safe integer, or a decimal / 0x-hex string).",
+    "tool": "encode_asn1",
+    "arguments": {
+        "spec": {
+            "type": "sequence",
+            "children": [
+                {
+                    "type": "integer",
+                    "value": 1.5
+                }
+            ]
+        }
+    },
+    "expectError": "VALIDATION_ERROR"
+}

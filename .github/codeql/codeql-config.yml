@@ -1,0 +1,25 @@
+# CodeQL configuration (referenced by .github/workflows/codeql.yml).
+#
+# The shipped code — src/ (the server), scripts/ (the gate, the corpus, the
+# verifiers) and the configuration — is analysed with the `security-extended`
+# suite, the one pkinative and pkinative-cli run (codeql.yml `queries`).
+#
+# tests/ is excluded from the analysis. The suites hold TEST-ONLY material by
+# design: the fixture password (`PASSWORD` in tests/_pki-fixtures.ts, the
+# needle table of tests/_secrets.ts), hostile inputs, fuzzed DER, and calls
+# that drive the handlers with that material. CodeQL follows it from the
+# tests into the server and reports what it finds there as a defect of the
+# server: the response cache key (src/cache.ts, a SHA-256 content address of
+# the call) was flagged as "a password hashed with insufficient computational
+# effort" with 18 paths, every one starting at the fixture password in a test.
+# The cache never hashes a secret (src/server.ts `isCacheable`, src/cache.ts
+# `holdsSecret`, tests/cache.test.ts); the finding was a false positive the
+# analysed test material produced. The identifiers CodeQL keys on (`password`
+# inputs, `PKINATIVE_MCP_PASSWORD`) live in src/ too, so a real misuse there
+# is still found. The tests keep tsc --strict, eslint and the gate.
+name: pkinative-mcp
+paths-ignore:
+  - tests
+  - dist
+  - coverage
+  - test-output

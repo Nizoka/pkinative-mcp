@@ -1,0 +1,10 @@
+{
+    "description": "One signature against one issuer key (NOT trust — verify_certificate_chain is the verdict), with the extension kinds and the RFC 4514 subject projected by fields.",
+    "tool": "inspect_certificate",
+    "arguments": {
+        "certificate": { "path": "fixtures/leaf.crt.pem" },
+        "issuer": { "path": "fixtures/inter.crt.pem" },
+        "fingerprints": ["SHA-256", "SHA-1"],
+        "fields": ["signature", "extensions.kind", "subjectString", "fingerprints"]
+    }
+}

@@ -1,0 +1,11 @@
+{
+    "description": "List the blocks of a PEM file in the sandbox: index, label, DER size, offset and SHA-256 of each block (summary: count and labels only).",
+    "tool": "convert_pem",
+    "arguments": {
+        "mode": "decode",
+        "input": {
+            "path": "fixtures/inter.crt.pem"
+        },
+        "verbosity": "summary"
+    }
+}

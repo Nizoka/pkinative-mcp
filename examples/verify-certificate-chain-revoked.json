@@ -1,0 +1,14 @@
+{
+    "description": "Offline revocation: the revoked leaf with the intermediate's CRL and the OCSP response you fetched — valid false with PKI_REASON_REVOKED in reasons[] (a verdict, never isError), the evidence counted in revocationEvidence.",
+    "tool": "verify_certificate_chain",
+    "arguments": {
+        "leaf": { "path": "fixtures/revoked.crt.pem" },
+        "candidates": [{ "path": "fixtures/inter.crt.pem" }],
+        "trustAnchors": [{ "path": "fixtures/root.crt.pem" }],
+        "crls": [{ "path": "fixtures/inter.crl.pem" }],
+        "ocspResponses": [{ "path": "fixtures/revoked.ocsp.der" }],
+        "requireRevocation": true,
+        "at": "2027-01-01T00:00:00Z",
+        "fields": ["valid", "reasons.code", "revocationEvidence", "pathLength"]
+    }
+}

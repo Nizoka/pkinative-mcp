@@ -1,0 +1,128 @@
+# Documentation consistency
+# =========================
+# ci.yml deliberately ignores `docs/**` and `**.md`, so a documentation-only
+# pull request triggers no workflow at all. That is how a tool count, an error
+# code table or an operator-variable list outlives the source it describes.
+#
+# This workflow closes that gap: it runs scripts/verify-docs.ts, which
+# cross-checks every version, count and inventory quoted in the documentation
+# and the agent files (AGENTS.md, CLAUDE.md, llms.txt, .claude/, the
+# instructions) against the tree — the 34 tools, the wrapper codes, the nine
+# PKINATIVE_MCP_* variables of server.json, the 22 limits, the generated
+# `.claude/rules/`.
+#
+# The PR job is hermetic (no network). A weekly scheduled job adds --online,
+# which compares the manifest against the npm registry, so a published release
+# that the docs have not caught up with surfaces on its own rather than at the
+# next audit.
+
+name: Docs
+
+on:
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'docs/**'
+      - '**.md'
+      - 'llms.txt'
+      - 'examples/**'
+      - 'server.json'
+      - '.claude/**'
+      - '.github/**'
+      - 'scripts/verify-docs.ts'
+      - 'scripts/lib/**'
+      - 'scripts/build-claude-rules.ts'
+      # The parity rules cross-check documented tools, error codes and
+      # operator variables against src/, so a change there can break the
+      # docs without touching them.
+      - 'src/**'
+      - 'package.json'
+  push:
+    branches: [main, master]
+    paths:
+      - 'docs/**'
+      - '**.md'
+      - 'llms.txt'
+      - 'examples/**'
+      - 'server.json'
+      - '.claude/**'
+      - '.github/**'
+      - 'scripts/verify-docs.ts'
+      - 'scripts/lib/**'
+      - 'scripts/build-claude-rules.ts'
+      - 'src/**'
+      - 'package.json'
+  schedule:
+    # Mondays 06:00 UTC — catch npm drift without blocking anyone's PR.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify documentation consistency
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Type check scripts
+        run: npm run typecheck:scripts
+
+      - name: Verify documentation
+        run: npm run verify:docs
+
+  npm-drift:
+    name: Check the manifest against npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Only on the schedule and on manual runs: a package published between a
+    # PR opening and merging should not turn someone else's docs change red.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Verify documentation against the npm registry
+        run: npx tsx scripts/verify-docs.ts --online --strict

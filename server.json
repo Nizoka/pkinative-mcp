@@ -1,0 +1,98 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Nizoka/pkinative-mcp",
+  "title": "pkinative MCP — X.509, CMS, OCSP, time-stamps and PKCS#12 without a key byte leaving",
+  "description": "PKI MCP server: inspect, verify, issue, sign X.509, CSR, CRL, OCSP, CMS, TSP, PKCS#12. 34 tools",
+  "repository": {
+    "url": "https://github.com/Nizoka/pkinative-mcp",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "websiteUrl": "https://github.com/Nizoka/pkinative-mcp#readme",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "pkinative-mcp",
+      "version": "1.0.0",
+      "runtimeHint": "npx",
+      "runtimeArguments": [
+        {
+          "type": "positional",
+          "value": "-y",
+          "valueHint": "skip-confirm"
+        },
+        {
+          "type": "positional",
+          "value": "pkinative-mcp",
+          "valueHint": "package"
+        }
+      ],
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "PKINATIVE_MCP_OUTPUT_DIR",
+          "description": "Absolute path of the one sandbox directory: path inputs are read from it and outputMode='file' outputs are written under it (never overwritten; the real path of every file read and of every parent written must stay inside — a planted symlink or junction is SECURITY_VIOLATION). Key-bearing files (.key .p8 .p12 .pfx) are read by the key tools only, never written, never served as resources. Unset: every tool works on inline PEM / base64 only.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "filepath"
+        },
+        {
+          "name": "PKINATIVE_MCP_CACHE_DIR",
+          "description": "Opt-in content-addressed response cache directory (SHA-256 keyed, 1h TTL, 256 MiB LRU, plaintext at rest). Never caches path inputs, file output, a call carrying a password or a signer, a clock-dependent instant, a random serial or nonce, describe_engine or draft_governance_issue.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "filepath"
+        },
+        {
+          "name": "PKINATIVE_MCP_PORT",
+          "description": "Serve Streamable HTTP on this loopback port (POST /mcp) instead of stdio (MCP 2026-07-28, stateless, legacy fallback). Unauthenticated unless PKINATIVE_MCP_HTTP_TOKEN is set.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "number"
+        },
+        {
+          "name": "PKINATIVE_MCP_HTTP_TOKEN",
+          "description": "Opt-in bearer token for the HTTP transport (>= 16 chars, no whitespace; a weaker value refuses to start). When set, /mcp requires 'Authorization: Bearer <token>' or answers 401. Compared constant-time, never logged.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "PKINATIVE_MCP_PASSWORD",
+          "description": "Operator-side password of the encrypted PKCS#8 key or PKCS#12 file the tools open (keeps the secret out of the model transcript). Exclusive with the per-call password input (both at once is VALIDATION_ERROR). Never logged; only its presence is reported at startup.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "PKINATIVE_MCP_AT",
+          "description": "Pinned instant (ISO 8601 or epoch milliseconds) every omitted at / notBefore / signingTime falls back to, for reproducible verdicts and artefacts. Unset: the wall clock (a clock-dependent result is never cached). An invalid value refuses to start.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "PKINATIVE_MCP_MAX_INPUT_BYTES",
+          "description": "Operator ceiling for limits.maxInputBytes and the decoded size of one PKI object (default 67108864 = 64 MiB, the engine default). Integer >= 1024, read once at startup; an invalid value refuses to start. A per-call value above it is refused with LIMIT_CEILING_EXCEEDED.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "number"
+        },
+        {
+          "name": "PKINATIVE_MCP_MAX_KDF_ITERATIONS",
+          "description": "Operator ceiling for limits.maxKdfIterations and limits.maxPkcs12KdfIterations (default 10000000, the engine default): the CPU bound of a hostile PBES2 key or PKCS#12 file. Integer >= 1, read once at startup; an invalid value refuses to start.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "number"
+        },
+        {
+          "name": "PKINATIVE_MCP_MAX_PATHS_EXPLORED",
+          "description": "Operator ceiling for limits.maxPathsExplored (default 1000, the engine default): the RFC 5280 section 6 path-building work bound. Integer >= 1, read once at startup; an invalid value refuses to start.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "number"
+        }
+      ]
+    }
+  ]
+}

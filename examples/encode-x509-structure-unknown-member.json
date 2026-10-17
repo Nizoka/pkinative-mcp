@@ -1,0 +1,6 @@
+{
+    "description": "A misspelt spec member is refused by name (VALIDATION_ERROR naming spec notafter), never dropped silently.",
+    "tool": "encode_x509_structure",
+    "arguments": { "structure": "validity", "spec": { "notBefore": "2027-01-01T00:00:00Z", "notafter": "2028-01-01T00:00:00Z" } },
+    "expectError": "VALIDATION_ERROR"
+}

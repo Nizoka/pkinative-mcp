@@ -1,0 +1,5 @@
+{
+    "description": "The requested subjectAltName only, from the DER form, without the signature check.",
+    "tool": "inspect_csr",
+    "arguments": { "request": { "path": "fixtures/leaf.csr.der" }, "verify": false, "fields": ["subjectString", "extensions.names"] }
+}

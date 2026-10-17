@@ -1,0 +1,5 @@
+{
+  "$comment": "Every lint WARNING or NOTICE zlint or pkilint raises on a certificate create_certificate writes in tests/interop/lint.test.ts, reviewed. A lint ERROR is never waived here: the encoder is fixed. A waiver names the tool, the lint, the artefacts it applies to (an id of the test, or *) and why the finding is accepted; one that matches nothing in a run of its tool fails the test as stale.",
+  "schema": 1,
+  "waivers": []
+}

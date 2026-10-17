@@ -1,0 +1,8 @@
+{
+    "description": "A TimeStampReq over a file with a random nonce (node:crypto), ready to POST to a TSA as application/timestamp-query. Keep summary.nonce and imprintHex (or the bytes) for verify_timestamp.",
+    "tool": "create_timestamp_request",
+    "arguments": {
+        "data": { "path": "fixtures/content.txt" },
+        "nonce": "random"
+    }
+}

@@ -1,0 +1,6 @@
+{
+    "description": "An authorityKeyIdentifier value computed from the issuing certificate (its subjectKeyIdentifier), written to a sandbox .der file. Documentation only: file mode is not executed by the examples runner.",
+    "tool": "encode_x509_structure",
+    "arguments": { "structure": "authority-key-identifier", "spec": { "issuerCertificate": { "path": "fixtures/inter.crt.pem" } }, "encoding": "der", "outputMode": "file", "outputPath": "out/aki.der" },
+    "documentationOnly": true
+}

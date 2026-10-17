@@ -1,0 +1,11 @@
+{
+    "description": "Wrap a DER certificate into one strict RFC 7468 CERTIFICATE block, delivered as the embedded PEM resource.",
+    "tool": "convert_pem",
+    "arguments": {
+        "mode": "encode",
+        "input": {
+            "path": "fixtures/leaf.crt.der"
+        },
+        "label": "CERTIFICATE"
+    }
+}

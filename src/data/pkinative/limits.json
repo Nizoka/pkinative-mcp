@@ -1,0 +1,30 @@
+{
+  "$comment": "The registry of every named security bound. The limits-parity rule of scripts/verify-docs.ts holds four copies together: the PkiLimits interface (src/types/pki-types.ts, CWE in each TSDoc line), DEFAULT_PKI_LIMITS and its header table (src/core/pki-limits.ts), this file, and the Resource Limits table of SECURITY.md.",
+  "schemaVersion": 1,
+  "package": "pkinative",
+  "verifiedOn": "2026-09-15",
+  "limits": [
+    { "limit": "maxInputBytes", "default": 67108864, "display": "64 MiB", "cwe": "CWE-400", "guards": "The size of one DER input, or the length of one PEM text." },
+    { "limit": "maxDepth", "default": 64, "display": "64", "cwe": "CWE-674", "guards": "The nesting depth of constructed values; the decoder is iterative, so hostile nesting stops here instead of in the call stack." },
+    { "limit": "maxNodes", "default": 200000, "display": "200 000", "cwe": "CWE-770", "guards": "The number of values decoded from one input." },
+    { "limit": "maxIntegerBytes", "default": 8192, "display": "8 192", "cwe": "CWE-407", "guards": "The content length of one INTEGER converted to a bigint." },
+    { "limit": "maxOidBytes", "default": 256, "display": "256", "cwe": "CWE-400", "guards": "The content length of one OBJECT IDENTIFIER." },
+    { "limit": "maxBerSegments", "default": 10000, "display": "10 000", "cwe": "CWE-400", "guards": "The segments joined from one BER constructed string." },
+    { "limit": "maxPemBlocks", "default": 10000, "display": "10 000", "cwe": "CWE-400", "guards": "The blocks read from one PEM text." },
+    { "limit": "maxExtensions", "default": 256, "display": "256", "cwe": "CWE-400", "guards": "The extensions of one certificate; of one certification request, the attributes, the values of each attribute and the extensions it requests — the structure the attributes carry, so the one bound fits both." },
+    { "limit": "maxGeneralNames", "default": 10000, "display": "10 000", "cwe": "CWE-400", "guards": "The GeneralName entries of one field." },
+    { "limit": "maxNameAttributes", "default": 1024, "display": "1 024", "cwe": "CWE-400", "guards": "The attributes of one distinguished name." },
+    { "limit": "maxPolicies", "default": 1024, "display": "1 024", "cwe": "CWE-400", "guards": "The policies or policy mappings of one extension." },
+    { "limit": "maxChainLength", "default": 10, "display": "10", "cwe": "CWE-400", "guards": "The certificates one certification path may hold. Path building is exponential in the candidate set, so this is a bound on the walk and not a statement about real hierarchies." },
+    { "limit": "maxPolicyNodes", "default": 4096, "display": "4 096", "cwe": "CWE-770", "guards": "The live nodes of the RFC 5280 valid_policy_tree, which grows multiplicatively with each certificate." },
+    { "limit": "maxRevokedCertificates", "default": 1000000, "display": "1 000 000", "cwe": "CWE-400", "guards": "The entries walked in one CRL revokedCertificates list. The list is walked with a lazy TLV cursor rather than decoded into nodes, so this is the bound that applies rather than maxNodes." },
+    { "limit": "maxOcspSingleResponses", "default": 256, "display": "256", "cwe": "CWE-400", "guards": "The SingleResponse entries of one OCSP response. A client asks about one certificate, so a responder returning hundreds is not answering the question." },
+    { "limit": "maxPathsExplored", "default": 1000, "display": "1 000", "cwe": "CWE-400", "guards": "The candidate paths explored while building one. Path building is exponential in the candidate set, not linear in the chain length, so this is THE denial-of-service bound of section 6 rather than maxChainLength." },
+    { "limit": "maxSignerInfos", "default": 64, "display": "64", "cwe": "CWE-400", "guards": "The signers of one SignedData. Each costs a signature verification and, with a trust store, a path search." },
+    { "limit": "maxAttributes", "default": 256, "display": "256", "cwe": "CWE-400", "guards": "The attributes in one attribute set: a CMS signer's signed or unsigned set, a PKCS#8 key's, a PKCS#12 bag's. Real writers use fewer than ten." },
+    { "limit": "maxCmsCertificatesAndCrls", "default": 1024, "display": "1 024", "cwe": "CWE-400", "guards": "The certificates and revocation entries one SignedData carries. The bag is unauthenticated and the signer search walks it." },
+    { "limit": "maxKdfIterations", "default": 10000000, "display": "10 000 000", "cwe": "CWE-400", "guards": "The PBKDF2 iteration count honoured in one derivation. The count is declared by the file and run by the host, so without a bound a PKCS#12 declaring 2^31 iterations freezes the reader inside Web Crypto." },
+    { "limit": "maxPkcs12Bags", "default": 4096, "display": "4 096", "cwe": "CWE-400", "guards": "The SafeBags read from one PKCS#12, across every SafeContents. Each certificate bag is parsed and each key bag may cost a decryption." },
+    { "limit": "maxPkcs12KdfIterations", "default": 10000000, "display": "10 000 000", "cwe": "CWE-400", "guards": "The PBKDF2 iterations one PKCS#12 costs in total: its PBMAC1 MAC, every encrypted SafeContents and every shrouded key. maxKdfIterations bounds one derivation, and a file may declare thousands of them, so without a total one file costs thousands of maximal derivations." }
+  ]
+}

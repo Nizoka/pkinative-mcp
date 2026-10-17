@@ -1,0 +1,5 @@
+{
+    "description": "What does the fixture request ask for, and did the key it carries sign it? The summary: subject, key kind, requested extension kinds, signatureValid.",
+    "tool": "inspect_csr",
+    "arguments": { "request": { "path": "fixtures/leaf.csr.pem" }, "verbosity": "summary" }
+}

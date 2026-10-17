@@ -1,0 +1,20 @@
+{
+    "description": "What the two responder answers say: the good answer for serial 0x1001 (nonce echoed, signed by the embedded delegated responder) and the revoked answer for 0x1002, its signature checked against the known responder certificate.",
+    "steps": [
+        {
+            "tool": "inspect_ocsp_response",
+            "arguments": {
+                "response": { "path": "fixtures/leaf.ocsp.der" },
+                "verbosity": "summary"
+            }
+        },
+        {
+            "tool": "inspect_ocsp_response",
+            "arguments": {
+                "response": { "path": "fixtures/revoked.ocsp.der" },
+                "responder": { "path": "fixtures/ocsp.crt.pem" },
+                "fields": ["signature", "basicResponse.responses.status", "basicResponse.responses.certId.serialNumber", "noncePresent"]
+            }
+        }
+    ]
+}

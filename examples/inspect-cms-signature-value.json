@@ -1,0 +1,10 @@
+{
+    "description": "The signature value a counter time-stamp must stamp (hash it, then create_timestamp_request digestHex), with a one-key signature check against the signer certificate.",
+    "tool": "inspect_cms",
+    "arguments": {
+        "signedData": { "path": "fixtures/detached.p7s" },
+        "signerCertificate": { "path": "fixtures/leaf.crt.pem" },
+        "content": { "path": "fixtures/content.txt" },
+        "fields": ["signerInfos.signature", "signerInfos.sid", "signerSignature"]
+    }
+}

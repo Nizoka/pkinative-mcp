@@ -1,0 +1,6 @@
+{
+    "description": "An RSA key cannot be imported without naming its signature scheme: pkinative has no default (pass rsaScheme 'pkcs1' or 'pss').",
+    "tool": "inspect_private_key",
+    "arguments": { "key": { "path": "fixtures/rsa.key.pem" }, "tryImport": true },
+    "expectError": "RSA_SCHEME_REQUIRED"
+}

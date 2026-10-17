@@ -1,0 +1,18 @@
+{
+    "description": "A leaf issued by a PKCS#12 signer (the bag's certificate is the issuer unless issuerCertificate says otherwise), written as PEM into the sandbox — documentation only: the sandbox and the password are yours.",
+    "documentationOnly": true,
+    "tool": "create_certificate",
+    "arguments": {
+        "spec": {
+            "subject": { "CN": "svc.example.test" },
+            "notBefore": "2027-01-01T00:00:00Z",
+            "validityDays": 90,
+            "extensions": { "subjectAltName": { "dns": ["svc.example.test"] }, "extendedKeyUsage": ["serverAuth"], "keyUsage": ["digitalSignature"] }
+        },
+        "issuerCertificate": { "path": "fixtures/leaf.crt.pem" },
+        "subjectPublicKey": { "path": "fixtures/leaf.csr.pem" },
+        "signer": { "p12": { "path": "fixtures/leaf.p12" }, "password": "<password:test-only>" },
+        "outputMode": "file",
+        "outputPath": "issued/svc.crt.pem"
+    }
+}

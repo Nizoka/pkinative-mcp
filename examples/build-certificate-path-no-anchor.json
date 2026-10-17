@@ -1,0 +1,10 @@
+{
+    "description": "No candidate links the leaf to the anchor: the leaf alone comes back with PKI_REASON_NO_TRUST_ANCHOR in structuralReasons (found:false) — a verdict, not an error.",
+    "tool": "build_certificate_path",
+    "arguments": {
+        "leaf": { "path": "fixtures/leaf.crt.pem" },
+        "trustAnchors": [{ "path": "fixtures/root.crt.pem" }],
+        "at": "2027-01-01T00:00:00Z",
+        "fields": ["found", "structuralReasons.code", "path.subject", "pathLength"]
+    }
+}

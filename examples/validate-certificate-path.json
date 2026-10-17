@@ -1,0 +1,9 @@
+{
+    "description": "RFC 5280 §6.1 validation of the ordered path leaf → intermediate against the root at a pinned instant, every link signature verified first: valid:true, signatures[] both valid.",
+    "tool": "validate_certificate_path",
+    "arguments": {
+        "path": [{ "path": "fixtures/leaf.crt.pem" }, { "path": "fixtures/inter.crt.pem" }],
+        "trustAnchors": [{ "path": "fixtures/root.crt.pem" }],
+        "at": "2027-01-01T00:00:00Z"
+    }
+}

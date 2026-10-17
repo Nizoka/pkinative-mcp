@@ -1,0 +1,597 @@
+{
+  "$comment": "Fingerprints of every sample in test-output/samples/ (written by the BUILT server, scripts/generate-samples.ts). Regenerate deliberately with `npx tsx scripts/verify-samples.ts --update`, and say why in the release notes: a changed hash means existing output changed. Mode `bytes` is a SHA-256 of the file (deterministic artefacts: Ed25519 and RSA PKCS#1 signatures, requests, encodings); mode `tbs` is a SHA-256 of the signed part only (ECDSA and RSA-PSS draw a random per signature, so the signature value can never repeat but what was signed must); mode `semantic` is a SHA-256 of the canonical JSON of the result without its volatile members (evaluatedAt, sha256, sizeBytes, filePath). Each entry's `since` names the release whose output the hash is: it is carried forward untouched while the sample is unchanged, and moves to the release doing the rebaseline when the hash changes, so the chain 1.0.0 -> 1.1.0 -> … stays auditable and every re-anchoring is visible in the diff.",
+  "baselineVersion": "1.0.0",
+  "provenance": "Initial baseline for 1.0.0: 98 samples generated from the 89 examples by scripts/generate-samples.ts through the built server (dist/server.js) with PKINATIVE_MCP_AT=2027-01-01T00:00:00Z and the OpenSSL-made fixtures under fixtures/; verified by two generations (--update then --strict: 98 tracked samples match) and by the release gate on 2026-10-14. 10 entries are byte-exact (Ed25519 / RSA PKCS#1 signers, requests, encodings), 3 are compared on their TBS (ECDSA / RSA-PSS signers draw a random per signature), 85 are semantic (JSON results and randomised artefacts).",
+  "at": "2027-01-01T00:00:00Z",
+  "timezone": "UTC",
+  "entries": {
+    "amend-cms-add-timestamp-refused.json": {
+      "mode": "semantic",
+      "hash": "e217b8cefdeb9df4bb7ed42e6764af397b95c990ebf48bd7f1b0d8fc0daa262e",
+      "size": 926,
+      "since": "1.0.0"
+    },
+    "amend-cms-add-unsigned-attribute.json": {
+      "mode": "semantic",
+      "hash": "251e96b667e63e1e4f0c05d7a5016639b1056053d87497e1009ed6ac1ddbb3f7",
+      "size": 936,
+      "since": "1.0.0"
+    },
+    "amend-cms-add-unsigned-attribute.step1.p7s": {
+      "mode": "bytes",
+      "hash": "12b0b545a762f2075386ec1b354e9f1fea303efdbf98104451a849ce56fcb787",
+      "size": 1711,
+      "since": "1.0.0"
+    },
+    "build-certificate-path-no-anchor.json": {
+      "mode": "semantic",
+      "hash": "50497b5ae760f1dd47142889c012d3ac37ba589252e339a33eb53d2c9dc5c17e",
+      "size": 342,
+      "since": "1.0.0"
+    },
+    "build-certificate-path.json": {
+      "mode": "semantic",
+      "hash": "17a4a5bc76133c3baab656a7f6f5690113f46a6c74b398e6ba838233499ba827",
+      "size": 457,
+      "since": "1.0.0"
+    },
+    "check-certificate-name-match.json": {
+      "mode": "semantic",
+      "hash": "b04edba3836a6096e3ee6196d75535a8906c268bddaa83f6dbb13cfc23125bc0",
+      "size": 313,
+      "since": "1.0.0"
+    },
+    "check-certificate-name-mismatch.json": {
+      "mode": "semantic",
+      "hash": "4c9869910a73229a41aba7fa02fead615fbb0d375171f7715cec19ee17153f76",
+      "size": 683,
+      "since": "1.0.0"
+    },
+    "check-certificate-name-wildcard.json": {
+      "mode": "semantic",
+      "hash": "1d9868813425766cfa6e885114fc76acdd2fe10f8ac34c20dae1609fc66a4d78",
+      "size": 371,
+      "since": "1.0.0"
+    },
+    "check-certificate-purpose-refused.json": {
+      "mode": "semantic",
+      "hash": "4d50d4f206eca91e104b7a0d2c7fb6b28726ec5081babce2d4fc0e2aac85f57d",
+      "size": 742,
+      "since": "1.0.0"
+    },
+    "check-certificate-purpose-server-auth.json": {
+      "mode": "semantic",
+      "hash": "47c68342fb9765787fc9898c34d1f42e86333bf985f3c66c3b90f3145e7276e7",
+      "size": 388,
+      "since": "1.0.0"
+    },
+    "check-crl-revocation-delta.json": {
+      "mode": "semantic",
+      "hash": "f987c1d49877e99073cd4f831d32e253369a6de22e3858669390d32d473c74e0",
+      "size": 425,
+      "since": "1.0.0"
+    },
+    "check-crl-revocation-not-delta.json": {
+      "mode": "semantic",
+      "hash": "59b02d07351b980d34d81759f2d1895be0633dd74f1696ca4d86f5520fafd9fb",
+      "size": 461,
+      "since": "1.0.0"
+    },
+    "check-crl-revocation.json": {
+      "mode": "semantic",
+      "hash": "5594400ca3b529d1dd064ef80ba55ae7ad8a7b457aa062bd673711594a2b838d",
+      "size": 578,
+      "since": "1.0.0"
+    },
+    "check-ocsp-status.json": {
+      "mode": "semantic",
+      "hash": "4c046c2dfb9bbadf4d50368b928dcfffda67ceeddd43fafbdb07511c1f5c315a",
+      "size": 824,
+      "since": "1.0.0"
+    },
+    "compute-fingerprint-key-id-refused.json": {
+      "mode": "semantic",
+      "hash": "a26d10a94982b34c1015bf2bef00088b456f60d2bf1df75433b7f15d0910d908",
+      "size": 453,
+      "since": "1.0.0"
+    },
+    "compute-fingerprint-key-id.json": {
+      "mode": "semantic",
+      "hash": "062c2936179041f960c7030c8650bb47676c95072b3553f8b1178cbdcffc3331",
+      "size": 292,
+      "since": "1.0.0"
+    },
+    "compute-fingerprint-sha256.der": {
+      "mode": "bytes",
+      "hash": "696e5f19cd8213baf63a16ee28386b45ee79585fcfb16364bc6584464321dc7f",
+      "size": 32,
+      "since": "1.0.0"
+    },
+    "compute-fingerprint-sha256.json": {
+      "mode": "semantic",
+      "hash": "5e917b08b19664796e08e63b596612d7b2af785c1c945faedd8e3f0863cacbbb",
+      "size": 518,
+      "since": "1.0.0"
+    },
+    "compute-fingerprint-shake256.der": {
+      "mode": "bytes",
+      "hash": "16a5f0198460a2608017279e11d6c388a9c8f720f2afc89517928bd68ea2fdf2",
+      "size": 64,
+      "since": "1.0.0"
+    },
+    "compute-fingerprint-shake256.json": {
+      "mode": "semantic",
+      "hash": "7b4d264b5b3b8fbc78ee9f4bd7eecf4ddc04b4edd6ba14c19a87368fa2fdaa3e",
+      "size": 659,
+      "since": "1.0.0"
+    },
+    "convert-pem-decode.json": {
+      "mode": "semantic",
+      "hash": "d5d6e26a68d15a41af53ecabb40745860d39f27c0b9027d289e29346b2fccd06",
+      "size": 197,
+      "since": "1.0.0"
+    },
+    "convert-pem-encode.json": {
+      "mode": "semantic",
+      "hash": "7e63dcd1523613eda78d3bfc71a023d95c44c8d0d15cdb5df84a5197f201296d",
+      "size": 1602,
+      "since": "1.0.0"
+    },
+    "convert-pem-encode.pem": {
+      "mode": "bytes",
+      "hash": "795789e38718676d28fb0c2123a5ba383028f43a7ffef5c16988b330d8648db4",
+      "size": 1005,
+      "since": "1.0.0"
+    },
+    "convert-pem-extract-hex.json": {
+      "mode": "semantic",
+      "hash": "4ed5ccfa148a5e48f0b0a5fe6703b9a5415d4339efca190b605d28b204a1a77b",
+      "size": 1762,
+      "since": "1.0.0"
+    },
+    "convert-pem-private-key-refused.json": {
+      "mode": "semantic",
+      "hash": "7ee671f92e117a8911d69d3fc52727038bd7a7e7b6d85cc7c2bb3847170b7d3d",
+      "size": 467,
+      "since": "1.0.0"
+    },
+    "create-certificate-issue-leaf.json": {
+      "mode": "semantic",
+      "hash": "d411029336a2074423ed02fd7a03e94f61163cbdfe3da6cad04f01b0c680e402",
+      "size": 1615,
+      "since": "1.0.0"
+    },
+    "create-certificate-issue-leaf.step1.crt": {
+      "mode": "tbs",
+      "hash": "3037a57e9c73bf336e0fd5ff90d2bd1d13ee9d1589a36e4930dfa9f7df7391ee",
+      "size": 471,
+      "since": "1.0.0"
+    },
+    "create-certificate-self-signed-ca.json": {
+      "mode": "semantic",
+      "hash": "25e0907d6866e7f5b0ad37105775e7618fae3e0bf0b6f8022b99e036452fa9d8",
+      "size": 1664,
+      "since": "1.0.0"
+    },
+    "create-certificate-self-signed-ca.step1.crt": {
+      "mode": "bytes",
+      "hash": "694fa39766a751eaaf6be471061639f5b3bdce183549d0a15272fbca5e79e0b8",
+      "size": 350,
+      "since": "1.0.0"
+    },
+    "create-csr-key-mismatch.json": {
+      "mode": "semantic",
+      "hash": "cecb6f9fb991e9d937ba8c14e231de4fa3a4cb3b68e9e8e43dbaf43f60886f8e",
+      "size": 454,
+      "since": "1.0.0"
+    },
+    "create-csr-pkcs12.json": {
+      "mode": "semantic",
+      "hash": "1e555004c00403271736ffee017188ad538010d20d2c5808f7d443b4f1d353a1",
+      "size": 1214,
+      "since": "1.0.0"
+    },
+    "create-csr-pkcs12.pem": {
+      "mode": "tbs",
+      "hash": "2fec0f2af13ac0aa48e5bf996b491eb8264db462e9f8041f3591787ad38b63b7",
+      "size": 440,
+      "since": "1.0.0"
+    },
+    "create-csr-round-trip.json": {
+      "mode": "semantic",
+      "hash": "c10322d87516a985459add0ef5767c1134ff3438a25b8840537bed8270075343",
+      "size": 1279,
+      "since": "1.0.0"
+    },
+    "create-csr-round-trip.step1.csr": {
+      "mode": "tbs",
+      "hash": "633110eece208168e2be7b77fabf285f0aea65427597c5f70d687c8b8c152356",
+      "size": 353,
+      "since": "1.0.0"
+    },
+    "create-ocsp-request.der": {
+      "mode": "semantic",
+      "hash": "1f1f18efd9a9b081e1a81dcdba9e7b726a8456fd58aeecb17306baeb3a147bff",
+      "size": 136,
+      "since": "1.0.0"
+    },
+    "create-ocsp-request.json": {
+      "mode": "semantic",
+      "hash": "c509f03054750795a84e205ba2c039e3044c0d4ebbad98410e0fb157a9859477",
+      "size": 1284,
+      "since": "1.0.0"
+    },
+    "create-timestamp-request-digest-hex.der": {
+      "mode": "bytes",
+      "hash": "3aee0e82bb90414784478c192565731d4f2e2b54eabdcad7719704bfa8e222fd",
+      "size": 86,
+      "since": "1.0.0"
+    },
+    "create-timestamp-request-digest-hex.json": {
+      "mode": "semantic",
+      "hash": "859d6e78b50786d2211b675e2a3d0ebd0ffe5950f63a6b2e838fc8305b05e08d",
+      "size": 914,
+      "since": "1.0.0"
+    },
+    "create-timestamp-request-random-nonce.json": {
+      "mode": "semantic",
+      "hash": "e201ccbb5f6daade7708ec702165e048cd57f2d6701cc4a333bdcb5ce0356f29",
+      "size": 768,
+      "since": "1.0.0"
+    },
+    "create-timestamp-request-random-nonce.tsq": {
+      "mode": "semantic",
+      "hash": "6d0856baf3afbea378768e501a5c9ebefc88e377772ef9237c37dbfaec75672f",
+      "size": 69,
+      "since": "1.0.0"
+    },
+    "decode-asn1-ber.json": {
+      "mode": "semantic",
+      "hash": "71a331b3780cd1b38ba1a29e679db4ed3738bd549d95489060ed52658e42ccb0",
+      "size": 900,
+      "since": "1.0.0"
+    },
+    "decode-asn1-private-key-refused.json": {
+      "mode": "semantic",
+      "hash": "67809c47929c9cc7330e1ac7d7e637826c714e3de965a94847fd23931129d8f0",
+      "size": 485,
+      "since": "1.0.0"
+    },
+    "decode-asn1-read.json": {
+      "mode": "semantic",
+      "hash": "d83ef4fa935d7b5398d91bd965d6d4664f48d0193d51a5891a2aa778ab328be3",
+      "size": 275,
+      "since": "1.0.0"
+    },
+    "decode-asn1-reencode.json": {
+      "mode": "semantic",
+      "hash": "2eb050df53a884e142054ba31d5db11ababad7f9bbae295ca4c6e08eb353e970",
+      "size": 1584,
+      "since": "1.0.0"
+    },
+    "decode-asn1-tree.json": {
+      "mode": "semantic",
+      "hash": "465da238275ee14fb49f29596dc826482404bfb7626e97ed36b7d34e5dfcb3dc",
+      "size": 3688,
+      "since": "1.0.0"
+    },
+    "decode-extension-basic-constraints.json": {
+      "mode": "semantic",
+      "hash": "66ccdfb7a47d2c44a0f4a449305ad152bcfbea85920f8960cb859298134836e8",
+      "size": 334,
+      "since": "1.0.0"
+    },
+    "decode-extension-malformed.json": {
+      "mode": "semantic",
+      "hash": "4b48bd2b9927945b7a2c2cc9abb83ee6f03c46d1bf4358aeec7a3f5491c8d68e",
+      "size": 762,
+      "since": "1.0.0"
+    },
+    "describe-engine.json": {
+      "mode": "semantic",
+      "hash": "f4128cd2ae681f4e154dd6a6f9b750f53e34c532c1406bc237074a5deeffbec8",
+      "size": 687,
+      "since": "1.0.0"
+    },
+    "draft-governance-issue.json": {
+      "mode": "semantic",
+      "hash": "8c8e5759820cae45143c818362520d653616bed5dc24281f5d24ae96e6fde0c5",
+      "size": 4381,
+      "since": "1.0.0"
+    },
+    "encode-asn1-algorithm-identifier.der": {
+      "mode": "bytes",
+      "hash": "37816bea5e04cc7dd43264de110300428089ead60e99d8cef178f55b523108aa",
+      "size": 12,
+      "since": "1.0.0"
+    },
+    "encode-asn1-algorithm-identifier.json": {
+      "mode": "semantic",
+      "hash": "6765427307bbe085b03a3cf7d496d179ae0ab85ffbd9784049a2e33783fae7e2",
+      "size": 424,
+      "since": "1.0.0"
+    },
+    "encode-asn1-round-trip.json": {
+      "mode": "semantic",
+      "hash": "905ddc97c0aeb2f57c1310d6f4c080c673fe099974dac21b9d686dc008ddaacb",
+      "size": 1075,
+      "since": "1.0.0"
+    },
+    "encode-asn1-round-trip.step1.der": {
+      "mode": "bytes",
+      "hash": "3943ab5b17c97f53fc82b94adc88a9241334a61879871e4694582d92396ab305",
+      "size": 16,
+      "since": "1.0.0"
+    },
+    "encode-asn1-spec-error.json": {
+      "mode": "semantic",
+      "hash": "6ea2baac78c65f5ea935b23aa6accc32512e2113775b994d7ab9e2bdc07509eb",
+      "size": 361,
+      "since": "1.0.0"
+    },
+    "encode-x509-structure-san.der": {
+      "mode": "bytes",
+      "hash": "e821a1caf21c469f8387fda7a55d271390a113853984e38524d82b5a7e636864",
+      "size": 47,
+      "since": "1.0.0"
+    },
+    "encode-x509-structure-san.json": {
+      "mode": "semantic",
+      "hash": "df8868078cc91dd18266051e6c32bf680ff03591dfef20ab853f42046d789fec",
+      "size": 507,
+      "since": "1.0.0"
+    },
+    "encode-x509-structure-signature-algorithm.der": {
+      "mode": "semantic",
+      "hash": "c9143c68013d2fb54dcb8b99f9c83208a472d5b5063266de634e716de9a64b79",
+      "size": 67,
+      "since": "1.0.0"
+    },
+    "encode-x509-structure-signature-algorithm.json": {
+      "mode": "semantic",
+      "hash": "00ccef8f1421d6056938766c73394d2d175482c964ad86f37873f52ee3b7b03f",
+      "size": 553,
+      "since": "1.0.0"
+    },
+    "encode-x509-structure-unknown-member.json": {
+      "mode": "semantic",
+      "hash": "112c3e2dc1e0b84bcf1f6f99fad0aae5aeb9adb0a37eb54ba01a69a5df82112d",
+      "size": 292,
+      "since": "1.0.0"
+    },
+    "explain-code-list-reasons.json": {
+      "mode": "semantic",
+      "hash": "9211781a7d4298c59e51ff244d4cd4106d41567586cd8a6570efff7cab1c0b82",
+      "size": 1887,
+      "since": "1.0.0"
+    },
+    "explain-code.json": {
+      "mode": "semantic",
+      "hash": "6c532ed0a3410395518644149a13b913ba7cabaae72cffc82d9e19e88e2bd706",
+      "size": 1030,
+      "since": "1.0.0"
+    },
+    "inspect-certificate-issuer-signature.json": {
+      "mode": "semantic",
+      "hash": "4c5522529f5eb24198df6896f9ac3e539e03ca174bc5b5a8285f761fb01bcaf1",
+      "size": 943,
+      "since": "1.0.0"
+    },
+    "inspect-certificate-private-key-refused.json": {
+      "mode": "semantic",
+      "hash": "07c24f4f033814b1b28e03dd3ecc1fb338b23b5f190c637d7b8413127e2e9f61",
+      "size": 572,
+      "since": "1.0.0"
+    },
+    "inspect-certificate-summary.json": {
+      "mode": "semantic",
+      "hash": "d549753526099a1c3a403b99b0cbecbb85d47b2236478f979a98a6d2ed889aa6",
+      "size": 765,
+      "since": "1.0.0"
+    },
+    "inspect-cms-signature-value.json": {
+      "mode": "semantic",
+      "hash": "b734ae86353c6e0f185bdb76d47f44298e2771a6917fb2ee8828e970d33a01c4",
+      "size": 660,
+      "since": "1.0.0"
+    },
+    "inspect-crl.json": {
+      "mode": "semantic",
+      "hash": "051674c2a8443a3a8c49d8788128605a34916ef13d4938d16c1ec4109554dd95",
+      "size": 1220,
+      "since": "1.0.0"
+    },
+    "inspect-csr-extensions.json": {
+      "mode": "semantic",
+      "hash": "ab6d3e0812aec65e203e3d5b4121ad399bf039982bbdbe746afb23a10797dd54",
+      "size": 375,
+      "since": "1.0.0"
+    },
+    "inspect-csr-summary.json": {
+      "mode": "semantic",
+      "hash": "4b99b431149cf16752d46893fed874d441474e06647b09aef80111c7adb97872",
+      "size": 439,
+      "since": "1.0.0"
+    },
+    "inspect-ocsp-response.json": {
+      "mode": "semantic",
+      "hash": "ce743197a16da3a8635a0597dcf9cba1a563c9edb09b69b56c16c787929f463d",
+      "size": 1110,
+      "since": "1.0.0"
+    },
+    "inspect-pkcs12-describe.json": {
+      "mode": "semantic",
+      "hash": "56e00de30b1e89db1f80e93820896fa6737c58faf76761e71683048f2ee42a5f",
+      "size": 377,
+      "since": "1.0.0"
+    },
+    "inspect-pkcs12-legacy.json": {
+      "mode": "semantic",
+      "hash": "b8f1cd3dc25d5fcb8906e9e68a9e08e2f2886f3256f5a016344fa727fb66e654",
+      "size": 384,
+      "since": "1.0.0"
+    },
+    "inspect-pkcs12-open.json": {
+      "mode": "semantic",
+      "hash": "06a17b5d05231da89c62bd172daab6a8892efde539a16dad308b19b3da6c6fd2",
+      "size": 486,
+      "since": "1.0.0"
+    },
+    "inspect-private-key-describe.json": {
+      "mode": "semantic",
+      "hash": "d247495ad9936fd6f1aaa7c6b0b0a38ac4a33a71e8ceef3d45db49d449d1ae7e",
+      "size": 543,
+      "since": "1.0.0"
+    },
+    "inspect-private-key-import.json": {
+      "mode": "semantic",
+      "hash": "050134d6dfebe98a872da2246d42e6a9eadc06bf39361dbb3d733ba26f76a0ae",
+      "size": 540,
+      "since": "1.0.0"
+    },
+    "inspect-private-key-rsa-scheme-required.json": {
+      "mode": "semantic",
+      "hash": "1424d168c8b1865de797e9027ea3b5f9861885a0148561dddb613c7101fa1933",
+      "size": 406,
+      "since": "1.0.0"
+    },
+    "inspect-timestamp-response.json": {
+      "mode": "semantic",
+      "hash": "7c15cb8144eedb35b26937f4df9f06b69b9f039dd55d7d2c7677eb5d7bf68b75",
+      "size": 1676,
+      "since": "1.0.0"
+    },
+    "open-pkcs12-export.json": {
+      "mode": "semantic",
+      "hash": "8b014075c1aace28dc0a9fb8f33bbdf482024d7874467846a5f87d74257b4dea",
+      "size": 3246,
+      "since": "1.0.0"
+    },
+    "open-pkcs12-export.pem": {
+      "mode": "bytes",
+      "hash": "91b1e858b1403621813a3a3d931fe4f5bc069428b24b6aac4ca8b6ef6059db55",
+      "size": 1714,
+      "since": "1.0.0"
+    },
+    "open-pkcs12-no-password.json": {
+      "mode": "semantic",
+      "hash": "5bf7230210ea241092fb42b559320e9449b14db58d9b4520890c365244a87011",
+      "size": 412,
+      "since": "1.0.0"
+    },
+    "open-pkcs12-nomac.json": {
+      "mode": "semantic",
+      "hash": "496daf47192ca0752da24d1e18660e2c3339987d785b24afa12bce7d0104f83e",
+      "size": 307,
+      "since": "1.0.0"
+    },
+    "open-pkcs12-rsa.json": {
+      "mode": "semantic",
+      "hash": "5c492f7d31cf3566cf3f633664571a867aad3f5fbf71051ccaa2cf3a8bea81f6",
+      "size": 303,
+      "since": "1.0.0"
+    },
+    "resolve-oid-encode-decode.json": {
+      "mode": "semantic",
+      "hash": "a6fbd94575587033d581ae1181ba9b875a9b6a275160d7687a49e973b8ffb03c",
+      "size": 653,
+      "since": "1.0.0"
+    },
+    "resolve-oid-invalid.json": {
+      "mode": "semantic",
+      "hash": "9c118a6ba282960f4054508f882761b30bbbc1c7b5c010a1958676e9450f555c",
+      "size": 598,
+      "since": "1.0.0"
+    },
+    "resolve-oid-list.json": {
+      "mode": "semantic",
+      "hash": "7fd3b9c42a97dc77a99fb548e25c9ad1592dac430091391f46d20ba5c4d7d616",
+      "size": 988,
+      "since": "1.0.0"
+    },
+    "resolve-oid-name.json": {
+      "mode": "semantic",
+      "hash": "c7e8ac3268705c3121ce7c9c4e3edd756893bec1376c289c84367531980da9e1",
+      "size": 442,
+      "since": "1.0.0"
+    },
+    "resolve-oid-validate.json": {
+      "mode": "semantic",
+      "hash": "3fda91248bf509c9d2c800bb54f2c35a1489170bad560b10554078ff409f0397",
+      "size": 277,
+      "since": "1.0.0"
+    },
+    "sign-cms-detached-then-verify.json": {
+      "mode": "semantic",
+      "hash": "d53a9579310c67df61f23d26d4e457217004988f070ef4575b58f9aa0346ac1f",
+      "size": 1542,
+      "since": "1.0.0"
+    },
+    "sign-cms-detached-then-verify.step1.p7s": {
+      "mode": "semantic",
+      "hash": "03a741b9ed1cf2b5f5049997b23674234eaeb81a6f96d7e9efe9556c72d04751",
+      "size": 1725,
+      "since": "1.0.0"
+    },
+    "validate-certificate-path-structure-only.json": {
+      "mode": "semantic",
+      "hash": "c17e7de0b6a9443880746db051b1be54e44b21edf153d23fbabfca2280b447cd",
+      "size": 325,
+      "since": "1.0.0"
+    },
+    "validate-certificate-path.json": {
+      "mode": "semantic",
+      "hash": "738d65af162131999271415bfc0d048f6c5dcf5bb05b22aba58fd440109a527f",
+      "size": 1190,
+      "since": "1.0.0"
+    },
+    "verify-certificate-chain-expired.json": {
+      "mode": "semantic",
+      "hash": "4df6727c9392fe93a2408eda8ad35eed13fe856c129dddaa2db850d12ab0e954",
+      "size": 434,
+      "since": "1.0.0"
+    },
+    "verify-certificate-chain-revoked.json": {
+      "mode": "semantic",
+      "hash": "6232d960c0bd90df57563f6c414251b878832bb201abda673d09518feb4f3138",
+      "size": 345,
+      "since": "1.0.0"
+    },
+    "verify-certificate-chain-server.json": {
+      "mode": "semantic",
+      "hash": "0e0447b360881e631c2bcca659ffdf68d03287fc86ec347cd6430cf22cb7b7d8",
+      "size": 374,
+      "since": "1.0.0"
+    },
+    "verify-cms-attached-offline-revocation.json": {
+      "mode": "semantic",
+      "hash": "2f344da9289fc135b1fa3544b0695daa0c4f4a2be68e0a03603e8a9e5e32bd35",
+      "size": 1286,
+      "since": "1.0.0"
+    },
+    "verify-cms-wrong-anchor.json": {
+      "mode": "semantic",
+      "hash": "6cdff3728a0e7c27775dc833af0b74965e4dc7aef087f6068e652e9879f733d8",
+      "size": 494,
+      "since": "1.0.0"
+    },
+    "verify-timestamp-other-data.json": {
+      "mode": "semantic",
+      "hash": "3d521bf025e86a73693c479640a62e341932fea29e25503d7a178b6aa9b97762",
+      "size": 303,
+      "since": "1.0.0"
+    },
+    "verify-timestamp-response-request.json": {
+      "mode": "semantic",
+      "hash": "1583e19d36a98d655beaeb800ddf9453af4a5fd0fece7abb75533d37bdc5a360",
+      "size": 1589,
+      "since": "1.0.0"
+    },
+    "verify-timestamp-token-digest.json": {
+      "mode": "semantic",
+      "hash": "e13f81c606329a309c72311d32703b3b69e8492824d1d93341e7107411a836a1",
+      "size": 418,
+      "since": "1.0.0"
+    }
+  }
+}

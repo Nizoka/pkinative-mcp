@@ -1,0 +1,12 @@
+{
+    "description": "Check candidate OIDs against the X.660 grammar: an invalid one is reported (valid: false), never an error.",
+    "tool": "resolve_oid",
+    "arguments": {
+        "mode": "validate",
+        "oids": [
+            "2.5.4.3",
+            "1.40",
+            "x.y"
+        ]
+    }
+}

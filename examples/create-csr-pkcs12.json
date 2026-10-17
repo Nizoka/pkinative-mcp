@@ -1,0 +1,5 @@
+{
+    "description": "From a PKCS#12 file: the key signs and its certificate supplies the public key (publicKeyFrom pkcs12).",
+    "tool": "create_csr",
+    "arguments": { "spec": { "subject": { "CN": "renewal.example.test" }, "extensions": { "subjectAltName": { "dns": ["renewal.example.test"] } } }, "signer": { "p12": { "path": "fixtures/leaf.p12" }, "password": "test-only-password" } }
+}

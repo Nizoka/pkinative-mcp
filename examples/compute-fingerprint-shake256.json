@@ -1,0 +1,13 @@
+{
+    "description": "64 bytes of SHAKE256 over the DER of a file, lowercase without separators: the messageDigest an Ed448 CMS signer computes.",
+    "tool": "compute_fingerprint",
+    "arguments": {
+        "input": {
+            "path": "fixtures/leaf.crt.der"
+        },
+        "mode": "shake256",
+        "outputLength": 64,
+        "separator": "",
+        "letterCase": "lower"
+    }
+}

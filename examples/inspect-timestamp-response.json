@@ -1,0 +1,7 @@
+{
+    "description": "What a TSA answered: the status, and the token it granted (imprint, genTime, accuracy, nonce, the TSA name as stated, the certificates it carries).",
+    "tool": "inspect_timestamp",
+    "arguments": {
+        "input": { "path": "fixtures/content.tsr" }
+    }
+}

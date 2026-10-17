@@ -1,0 +1,5 @@
+{
+    "description": "What is in this .p12 and how is it protected? MAC construction (PBMAC1), the encrypted SafeContents and its PBES2 parameters, the bags of the plain ones — no password needed.",
+    "tool": "inspect_pkcs12",
+    "arguments": { "pkcs12": { "path": "fixtures/leaf.p12" }, "verbosity": "summary" }
+}

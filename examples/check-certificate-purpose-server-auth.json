@@ -1,0 +1,5 @@
+{
+    "description": "May the leaf serve TLS (serverAuth) under its intermediate? The issuer's extKeyUsage is applied too (restrictIssuers, the Web PKI reading).",
+    "tool": "check_certificate_purpose",
+    "arguments": { "certificate": { "path": "fixtures/leaf.crt.pem" }, "chain": [{ "path": "fixtures/inter.crt.pem" }], "purpose": "serverAuth", "verbosity": "summary" }
+}

@@ -1,0 +1,36 @@
+{
+    "description": "Encode a GeneralNames SEQUENCE holding a [2] IMPLICIT dNSName, then read the produced bytes back with the IA5String reader.",
+    "steps": [
+        {
+            "tool": "encode_asn1",
+            "arguments": {
+                "spec": {
+                    "type": "sequence",
+                    "children": [
+                        {
+                            "type": "implicit",
+                            "tag": 2,
+                            "class": "context",
+                            "inner": {
+                                "type": "string",
+                                "stringType": "ia5",
+                                "value": "example.test"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "tool": "decode_asn1",
+            "arguments": {
+                "input": {
+                    "derBase64": "<base64 from step 1>"
+                },
+                "nodePath": "0",
+                "read": "string",
+                "stringType": "ia5"
+            }
+        }
+    ]
+}

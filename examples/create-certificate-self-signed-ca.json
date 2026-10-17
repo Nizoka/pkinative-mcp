@@ -1,0 +1,23 @@
+{
+    "description": "A self-signed CA from the Ed25519 test key: serial and dates pinned, so the bytes are reproducible; the subjectKeyIdentifier is derived, the self-signature verified before the DER is returned, then the new CA is read back.",
+    "steps": [
+        {
+            "tool": "create_certificate",
+            "arguments": {
+                "spec": {
+                    "serialNumber": 1,
+                    "subject": { "C": "FR", "O": "Acme", "CN": "Acme Test CA" },
+                    "notBefore": "2027-01-01T00:00:00Z",
+                    "validityDays": 3650,
+                    "extensions": { "basicConstraints": { "ca": true, "pathLen": 0 }, "keyUsage": ["keyCertSign", "cRLSign"] }
+                },
+                "signer": { "key": { "path": "fixtures/ed25519.key.pem" } },
+                "encoding": "der"
+            }
+        },
+        {
+            "tool": "inspect_certificate",
+            "arguments": { "certificate": { "derBase64": "<base64 from step 1>" }, "checkSelfSignature": true, "verbosity": "summary" }
+        }
+    ]
+}

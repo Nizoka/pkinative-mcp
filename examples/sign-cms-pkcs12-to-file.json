@@ -1,0 +1,12 @@
+{
+    "description": "Sign an attached message from a PKCS#12 file (its certificate and chain are embedded), PAdES-style without a signingTime, written as a .p7m inside the sandbox.",
+    "documentationOnly": true,
+    "tool": "sign_cms",
+    "arguments": {
+        "content": { "text": "hello, world" },
+        "signingTime": "none",
+        "signer": { "p12": { "path": "fixtures/leaf.p12" }, "password": "test-only-password" },
+        "outputMode": "file",
+        "outputPath": "signed/hello.p7m"
+    }
+}

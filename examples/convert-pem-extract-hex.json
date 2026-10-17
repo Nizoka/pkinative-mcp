@@ -1,0 +1,17 @@
+{
+    "description": "Extract the first CERTIFICATE block of a PEM file as inline hex (the DER appears under artefact.hex; no file is written).",
+    "tool": "convert_pem",
+    "arguments": {
+        "mode": "decode",
+        "input": {
+            "path": "fixtures/leaf.crt.pem"
+        },
+        "label": "CERTIFICATE",
+        "extractIndex": 0,
+        "encoding": "hex",
+        "fields": [
+            "extracted",
+            "artefact"
+        ]
+    }
+}

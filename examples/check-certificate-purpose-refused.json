@@ -1,0 +1,5 @@
+{
+    "description": "May the leaf sign code? Its extKeyUsage names serverAuth, clientAuth and emailProtection only: valid false with PKI_REASON_PURPOSE_NOT_PERMITTED at path[0].extKeyUsage, never isError.",
+    "tool": "check_certificate_purpose",
+    "arguments": { "certificate": { "path": "fixtures/leaf.crt.pem" }, "purpose": "codeSigning" }
+}

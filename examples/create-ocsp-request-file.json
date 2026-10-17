@@ -1,0 +1,12 @@
+{
+    "description": "The default SHA-1 request written as a .orq file inside the sandbox (never overwritten; the result carries a resource_link). Documentation only: the runner validates the input, it does not write.",
+    "documentationOnly": true,
+    "tool": "create_ocsp_request",
+    "arguments": {
+        "certificate": { "path": "fixtures/leaf.crt.pem" },
+        "issuer": { "path": "fixtures/inter.crt.pem" },
+        "nonce": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+        "outputMode": "file",
+        "outputPath": "ocsp/leaf.orq"
+    }
+}

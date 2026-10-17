@@ -1,0 +1,12 @@
+{
+    "description": "A private-key block is listed but never extracted: SECURITY_VIOLATION with the inspect_private_key remedy.",
+    "tool": "convert_pem",
+    "arguments": {
+        "mode": "decode",
+        "input": {
+            "path": "fixtures/leaf.key.pem"
+        },
+        "extractIndex": 0
+    },
+    "expectError": "SECURITY_VIOLATION"
+}

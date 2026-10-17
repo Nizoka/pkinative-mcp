@@ -1,0 +1,13 @@
+{
+    "description": "Name the OIDs met in a certificate: the signature algorithm, the subjectAltName extension and the serverAuth purpose (an unregistered one comes back null).",
+    "tool": "resolve_oid",
+    "arguments": {
+        "mode": "name",
+        "oids": [
+            "1.2.840.10045.4.3.2",
+            "2.5.29.17",
+            "1.3.6.1.5.5.7.3.1",
+            "1.2.3.4"
+        ]
+    }
+}

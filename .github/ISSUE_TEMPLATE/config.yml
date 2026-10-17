@@ -1,0 +1,17 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/Nizoka/pkinative-mcp/security/advisories/new
+    about: Never in a public issue. GitHub private vulnerability reporting is the channel today; SECURITY.md describes the disclosure procedure and the engine-vs-wrapper split.
+  - name: Engine defect (ASN.1, X.509, CMS, PKCS#12 parsing, verification, the 22 limits, a PKI_* code on a valid object)
+    url: https://github.com/Nizoka/pkinative/issues/new/choose
+    about: The server contains no PKI logic of its own. A wrong byte, a wrong verdict or a PKI_* code raised on a valid object is an engine issue; pkinative-mcp ships the fixed engine in a patch release.
+  - name: pkinative-cli (the sibling command line over the same engine)
+    url: https://github.com/Nizoka/pkinative-cli/issues/new/choose
+    about: A flag, an envelope or an exit code of the `pkinative` command belongs there; the key views and the wire form are shared between the two.
+  - name: Questions and discussions (pkinative ecosystem)
+    url: https://github.com/Nizoka/pkinative/discussions
+    about: How-to questions, design ideas and anything open-ended about the engine, its CLI or its MCP server.
+  - name: AI agents drafting an issue
+    url: https://github.com/Nizoka/pkinative-mcp/blob/main/.github/AGENT_RULES.md
+    about: Agents are draftsmen, never submitters. Use the draft_governance_issue tool (or `npm run verify:issue -- <draft.md>`) and hand the draft to a human who submits it under their own identity.

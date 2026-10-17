@@ -1,0 +1,11 @@
+{
+    "description": "A negative verdict is not an error: the token is a perfectly good time-stamp of something else (valid:false, PKI_REASON_TSP_IMPRINT_MISMATCH).",
+    "tool": "verify_timestamp",
+    "arguments": {
+        "response": { "path": "fixtures/content.tsr" },
+        "data": { "path": "fixtures/leaf.crt.der" },
+        "trustAnchors": [{ "path": "fixtures/root.crt.pem" }],
+        "at": "2027-01-01T00:00:00Z",
+        "verbosity": "summary"
+    }
+}

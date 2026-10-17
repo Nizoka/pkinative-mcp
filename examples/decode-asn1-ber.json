@@ -1,0 +1,5 @@
+{
+    "description": "A BER indefinite-length SEQUENCE (30 80 05 00 00 00) is refused under the default DER rules with PKI_ASN1_INDEFINITE_LENGTH_FORBIDDEN; encodingRules 'ber' decodes it (indefinite: true on the node).",
+    "tool": "decode_asn1",
+    "arguments": { "input": { "derBase64": "MIAFAAAA" }, "encodingRules": "ber" }
+}

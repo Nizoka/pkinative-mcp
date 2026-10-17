@@ -1,0 +1,5 @@
+{
+    "description": "Open a .p12 in one call: MAC verified, the key imported as a non-extractable Web Crypto key (described, never exported), and the certificate chain attached as a PEM bundle.",
+    "tool": "open_pkcs12",
+    "arguments": { "pkcs12": { "path": "fixtures/leaf.p12" }, "password": "test-only-password", "exportCertificates": true }
+}

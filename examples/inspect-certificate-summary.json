@@ -1,0 +1,5 @@
+{
+    "description": "The facts of one certificate, token-frugal: subject, issuer, serial, validity, key, extension kinds and the diagnostic count — the summary projection of inspect_certificate.",
+    "tool": "inspect_certificate",
+    "arguments": { "certificate": { "path": "fixtures/leaf.crt.pem" }, "verbosity": "summary" }
+}

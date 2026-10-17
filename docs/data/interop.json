@@ -1,0 +1,66 @@
+{
+  "$comment": "The OpenSSL interoperability corpus (scripts/lib/pki-corpus.ts), declared: scripts/validate-pki.ts holds the table to these counts (a coverage canary), tests/tools/pki-corpus.test.ts holds this file to the table. OpenSSL 3.x is the external judge; every artefact is written by the BUILT server (dist/server.js) under a pinned instant.",
+  "schemaVersion": 1,
+  "declared": {
+    "conformant": 23,
+    "refused": 5
+  },
+  "opensslCommands": [
+    "x509 -inform DER -noout -text",
+    "x509 -inform PEM -noout -text",
+    "verify -CAfile <ca> [-untrusted <inter>] [-attime <t>] <leaf>",
+    "verify -CAfile <ca> [-untrusted <inter>] -purpose sslserver [-attime <t>] <leaf>",
+    "req -inform DER -noout -verify",
+    "req -inform PEM -noout -verify",
+    "crl -inform PEM -noout -text",
+    "cms -verify -binary -inform DER -CAfile <root> -purpose any [-attime <t>] -out <devnull>",
+    "cms -verify -binary -inform DER -CAfile <root> -purpose any -content <file> [-attime <t>] -out <devnull>",
+    "asn1parse -inform DER",
+    "ocsp -reqin <file> -req_text",
+    "ts -query -in <file> -text"
+  ],
+  "levels": [
+    {
+      "level": 0,
+      "name": "engine round trip",
+      "where": "in-process, through dist/server.js callToolDirect()",
+      "checks": [
+        "inspect_certificate (self-signature or issuer signature) + verify_certificate_chain to the corpus CA at the pinned instant, with serverName and purposes for the leaves",
+        "inspect_csr with the proof of possession verified",
+        "verify_cms with the trust anchors (and the detached content)",
+        "decode_asn1 of the OCSP and time-stamp requests, plus an independent node:crypto reckoning of the CertID hashes / serial and of the message imprint / nonce",
+        "a deterministic entry produced twice hashes the same",
+        "a negative canary is refused with its declared code (a canary that writes bytes is an XPASS and fails the run)"
+      ]
+    },
+    {
+      "level": 1,
+      "name": "OpenSSL",
+      "where": "openssl 3.x on PATH (OPENSSL_BIN overrides; LibreSSL and OpenSSL < 3.0 are refused); skipped with the reason when absent, a failure under PKINATIVE_INTEROP_REQUIRED=1 or the gate's --require-all",
+      "checks": [
+        "x509 -text dumps every certificate (DER) and every PEM re-encoding",
+        "verify reaches OK from each leaf to its corpus CA (-purpose sslserver for the leaves, -untrusted for the pathLen-0 intermediate), at -attime 2027-01-01",
+        "req -verify reports the self-signature OK for every request (DER and the PEM re-encoding)",
+        "crl -text dumps the PEM re-encoding of the intermediate CRL",
+        "cms -verify reports CMS Verification successful for the attached and detached signatures (-CAfile the fixture root; the Ed25519 signer against its own root — OpenSSL 3.5+, an older judge skips that check with the reason)",
+        "asn1parse dumps the EC request",
+        "ocsp -req_text prints the Serial Number of the OCSP requests",
+        "ts -query -text prints the Nonce of the time-stamp requests"
+      ]
+    }
+  ],
+  "knownGaps": [
+    {
+      "id": "cms-eddsa",
+      "match": ["cms-ed25519-attached:cms-verify-attached"],
+      "minOpenssl": "3.5",
+      "reason": "Ed25519 signs the data, not a digest (RFC 8419). OpenSSL before 3.5.0 refuses every digest for EdDSA in CMS (\"eddsa_digest_signverify_init: invalid digest\") and can neither sign nor verify an Ed25519 SignedData; 3.5.0 added the signature schemes without a signing digest to CMS.",
+      "proof": "The corpus entry verifies with openssl cms -verify on OpenSSL 3.5.5 (Windows, macOS) and fails with that error on OpenSSL 3.0.13 (Ubuntu 24.04) and 3.0.2 (Ubuntu 22.04); the engine round trip (level 0) accepts it on every host."
+    }
+  ],
+  "measuredWith": {
+    "openssl": "3.5.5",
+    "date": "2026-10-14",
+    "host": "Windows 11, Node 22"
+  }
+}

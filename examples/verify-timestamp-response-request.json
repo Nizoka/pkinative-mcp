@@ -1,0 +1,12 @@
+{
+    "description": "Verify a TSA response against the request that was sent (imprint, nonce and policy all checked) and the data, with the TSA chaining to the root.",
+    "tool": "verify_timestamp",
+    "arguments": {
+        "response": { "path": "fixtures/content.tsr" },
+        "request": { "path": "fixtures/content.tsq" },
+        "data": { "path": "fixtures/content.txt" },
+        "trustAnchors": [{ "path": "fixtures/root.crt.pem" }],
+        "candidates": [{ "path": "fixtures/inter.crt.pem" }],
+        "at": "2027-01-01T00:00:00Z"
+    }
+}

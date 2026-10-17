@@ -1,0 +1,11 @@
+{
+    "description": "The same path with checkSignatures:false — a structural verdict: valid stays false (PKI_REASON_SIGNATURE_NOT_CHECKED on every link), failingReasons is empty, signaturesChecked:false says what you got.",
+    "tool": "validate_certificate_path",
+    "arguments": {
+        "path": [{ "path": "fixtures/leaf.crt.pem" }, { "path": "fixtures/inter.crt.pem" }],
+        "trustAnchors": [{ "path": "fixtures/root.crt.pem" }],
+        "at": "2027-01-01T00:00:00Z",
+        "checkSignatures": false,
+        "fields": ["valid", "failingReasons.code", "signaturesChecked", "signatures.verdict"]
+    }
+}

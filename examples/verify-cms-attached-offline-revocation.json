@@ -1,0 +1,13 @@
+{
+    "description": "Verify an attached CMS message against the root with the CRL and OCSP evidence fetched out of band, revocation required, S/MIME purpose.",
+    "tool": "verify_cms",
+    "arguments": {
+        "signedData": { "path": "fixtures/attached.p7s" },
+        "trustAnchors": [{ "path": "fixtures/root.crt.pem" }],
+        "crls": [{ "path": "fixtures/inter.crl.pem" }],
+        "ocspResponses": [{ "path": "fixtures/leaf.ocsp.der" }],
+        "requireRevocation": true,
+        "purposes": ["emailProtection"],
+        "at": "2027-01-01T00:00:00Z"
+    }
+}
