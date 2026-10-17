@@ -61,6 +61,49 @@ export interface OpensslCheck {
     readonly content?: FileRef;
 }
 
+/** An OpenSSL release as `major.minor`. */
+export type OpensslFloor = `${number}.${number}`;
+
+/**
+ * A documented gap of the judge: a check OpenSSL cannot run before a release,
+ * with the reason and the proof — the one place such a limit is declared
+ * (the engine keeps the same table in pkinative's scripts/lib/interop.ts).
+ * An older judge skips the matched checks with the reason on the PASS line
+ * instead of failing; level 0 still judges the bytes, and a CI leg that must
+ * carry the floors (`PKINATIVE_INTEROP_FLOORS_REQUIRED=1`) fails when its
+ * judge is below one. docs/data/interop.json declares the table
+ * (`knownGaps`), docs/guides/CONFORMANCE.md documents it, both held by tests.
+ */
+export interface OpensslGap {
+    readonly id: string;
+    /** `<entry id>:<command id>` of every check the gap covers. */
+    readonly match: readonly `${string}:${CommandId}`[];
+    readonly minOpenssl: OpensslFloor;
+    readonly reason: string;
+    readonly proof: string;
+}
+
+export const KNOWN_OPENSSL_GAPS: readonly OpensslGap[] = [
+    {
+        id: 'cms-eddsa',
+        match: ['cms-ed25519-attached:cms-verify-attached'],
+        minOpenssl: '3.5',
+        reason: 'Ed25519 signs the data, not a digest (RFC 8419). OpenSSL before 3.5.0 refuses every digest for EdDSA in CMS ("eddsa_digest_signverify_init: invalid digest") and can neither sign nor verify an Ed25519 SignedData; 3.5.0 added the signature schemes without a signing digest to CMS.',
+        proof: 'The corpus entry verifies with openssl cms -verify on OpenSSL 3.5.5 (Windows, macOS) and fails with that error on OpenSSL 3.0.13 (Ubuntu 24.04) and 3.0.2 (Ubuntu 22.04); the engine round trip (level 0) accepts it on every host.',
+    },
+];
+
+/** The gap covering one check of one entry, if any. */
+export function opensslGapFor(entryId: string, command: CommandId): OpensslGap | undefined {
+    return KNOWN_OPENSSL_GAPS.find((gap) => gap.match.includes(`${entryId}:${command}`));
+}
+
+/** True when `version` is at or above the `major.minor` floor. */
+export function opensslAtLeast(version: { readonly major: number; readonly minor: number }, floor: OpensslFloor): boolean {
+    const [major, minor] = floor.split('.').map(Number) as [number, number];
+    return version.major > major || (version.major === major && version.minor >= minor);
+}
+
 export interface Expectation {
     readonly roundTrip: readonly RoundTrip[];
     readonly openssl: readonly OpensslCheck[];
@@ -403,6 +446,7 @@ export const CORPUS: readonly CorpusEntry[] = [
         expect: {
             deterministic: true,
             roundTrip: [{ tool: 'verify_cms', arguments: { signedData: '<corpus:cms-ed25519-attached>', trustAnchors: ['<fixture:ed25519.crt.pem>'], at: AT, verbosity: 'summary' } }],
+            // OpenSSL 3.5+ for this check: KNOWN_OPENSSL_GAPS 'cms-eddsa'.
             openssl: [{ command: 'cms-verify-attached', expects: 'CMS Verification successful', caFile: 'fixture:ed25519.crt.pem' }],
         },
     },

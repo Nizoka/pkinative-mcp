@@ -42,11 +42,20 @@
         "verify reaches OK from each leaf to its corpus CA (-purpose sslserver for the leaves, -untrusted for the pathLen-0 intermediate), at -attime 2027-01-01",
         "req -verify reports the self-signature OK for every request (DER and the PEM re-encoding)",
         "crl -text dumps the PEM re-encoding of the intermediate CRL",
-        "cms -verify reports CMS Verification successful for the attached and detached signatures (-CAfile the fixture root; the Ed25519 signer against its own root)",
+        "cms -verify reports CMS Verification successful for the attached and detached signatures (-CAfile the fixture root; the Ed25519 signer against its own root — OpenSSL 3.5+, an older judge skips that check with the reason)",
         "asn1parse dumps the EC request",
         "ocsp -req_text prints the Serial Number of the OCSP requests",
         "ts -query -text prints the Nonce of the time-stamp requests"
       ]
+    }
+  ],
+  "knownGaps": [
+    {
+      "id": "cms-eddsa",
+      "match": ["cms-ed25519-attached:cms-verify-attached"],
+      "minOpenssl": "3.5",
+      "reason": "Ed25519 signs the data, not a digest (RFC 8419). OpenSSL before 3.5.0 refuses every digest for EdDSA in CMS (\"eddsa_digest_signverify_init: invalid digest\") and can neither sign nor verify an Ed25519 SignedData; 3.5.0 added the signature schemes without a signing digest to CMS.",
+      "proof": "The corpus entry verifies with openssl cms -verify on OpenSSL 3.5.5 (Windows, macOS) and fails with that error on OpenSSL 3.0.13 (Ubuntu 24.04) and 3.0.2 (Ubuntu 22.04); the engine round trip (level 0) accepts it on every host."
     }
   ],
   "measuredWith": {

@@ -176,9 +176,13 @@ jobs:
 
       # The same gate as the Linux matrix; `npm audit` stays on Linux (network,
       # once is enough). The gate builds before the suites that need dist/.
+      # Git for Windows and Homebrew carry OpenSSL 3.5+: these legs must run every
+      # floored check of scripts/lib/pki-corpus.ts KNOWN_OPENSSL_GAPS (the ubuntu
+      # legs, OpenSSL 3.0, skip them with the reason).
       - name: Run the quality gate (CI profile)
         env:
           PKINATIVE_INTEROP_REQUIRED: '1'
+          PKINATIVE_INTEROP_FLOORS_REQUIRED: '1'
         run: npx tsx scripts/gate.ts --ci --require-all
 
       - name: Upload the gate logs on failure

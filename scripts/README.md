@@ -33,7 +33,7 @@ tool is missing":
 | 0 | pass (or skipped with a reason printed — a skip is never silent) |
 | 1 | a content failure: a check did not hold, a fingerprint moved, a canary was accepted |
 | 2 | usage or infrastructure: bad flags, `dist/` missing, the corpus not generated, an external tool installed but unusable |
-| 3 | a required external tool is missing (`validate-pki.ts` under `PKINATIVE_INTEROP_REQUIRED=1`) |
+| 3 | a required external tool is missing (`validate-pki.ts` under `PKINATIVE_INTEROP_REQUIRED=1`), or below a floor of `KNOWN_OPENSSL_GAPS` under `PKINATIVE_INTEROP_FLOORS_REQUIRED=1` |
 
 ## The scripts
 

@@ -40,4 +40,11 @@ jobs:
         with:
           fail-on-severity: high
           allow-licenses: MIT, ISC, BSD-2-Clause, BSD-3-Clause, Apache-2.0, 0BSD, CC0-1.0, Unlicense
+          # scripts/data/lint-python-requirements.txt pins pkilint and its tree for the
+          # publish-profile linter (tests/interop/lint.test.ts): a tool that runs on the CI
+          # runner, never a dependency of the package, hash-pinned (`--require-hashes`).
+          # Four of them carry licences the allow-list does not name (MIT-0, MPL-2.0 and
+          # public-domain terms); they are exempted by package, not by licence, so a new
+          # licence anywhere else still blocks.
+          allow-dependencies-licenses: pkg:pypi/cffi, pkg:pypi/iso4217, pkg:pypi/pkilint, pkg:pypi/publicsuffixlist
           comment-summary-in-pr: on-failure

@@ -29,7 +29,7 @@ describe('hermetic environment', () => {
     it('recognises the prefix and nothing unrelated', () => {
         expect(isOperatorKnob('PKINATIVE_MCP_AT')).toBe(true);
         expect(isOperatorKnob('PKINATIVE_MCP_OUTPUT_DIR')).toBe(true);
-        for (const name of ['PATH', 'TZ', 'NODE_OPTIONS', 'GATE', 'GATE_REQUIRE_ARTIFACTS', 'OPENSSL_BIN', 'ZLINT', 'PKILINT_PYTHON', 'PKINATIVE_INTEROP_REQUIRED', 'PKINATIVE', 'XPKINATIVE_MCP_X', 'PDFNATIVE_MCP_OUTPUT_DIR']) {
+        for (const name of ['PATH', 'TZ', 'NODE_OPTIONS', 'GATE', 'GATE_REQUIRE_ARTIFACTS', 'OPENSSL_BIN', 'ZLINT', 'PKILINT_PYTHON', 'PKINATIVE_INTEROP_REQUIRED', 'PKINATIVE_INTEROP_FLOORS_REQUIRED', 'PKINATIVE', 'XPKINATIVE_MCP_X', 'PDFNATIVE_MCP_OUTPUT_DIR']) {
             expect(isOperatorKnob(name), name).toBe(false);
         }
     });

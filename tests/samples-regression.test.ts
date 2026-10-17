@@ -21,9 +21,9 @@ import { describe, expect, it } from 'vitest';
 
 import { loadExamples, type Example } from '../scripts/lib/example-runner.js';
 import {
-    BASELINE_AT, BASELINE_PATH, HOST_MEMBERS, IDENTICAL_SAMPLE_GROUPS, MANIFEST_PATH, OUTPUT_DIR, REPO_ROOT, VOLATILE_MEMBERS,
+    BASELINE_AT, BASELINE_PATH, HOST_DEPENDENT_SAMPLES, HOST_MEMBERS, IDENTICAL_SAMPLE_GROUPS, MANIFEST_PATH, OUTPUT_DIR, REPO_ROOT, VOLATILE_MEMBERS,
     argsAskRandom, canonicalJson, chainSince, compareToBaseline, currentVersion, derOf, fingerprint, fingerprintAll, firstElementOfSequence,
-    hasRandomFlag, loadBaseline, loadManifest, looksSigned, modeFor, relPath, semanticProjection, sha256Hex, signerIsRandomised, stripHost, stripVolatile,
+    hasRandomFlag, loadBaseline, loadManifest, looksSigned, modeFor, relPath, reportsHost, semanticProjection, sha256Hex, signerIsRandomised, stripHost, stripVolatile,
     unexpectedDuplicates, walkSamples,
     type Baseline, type Fingerprint, type FingerprintMode,
 } from '../scripts/lib/sample-fingerprint.js';
@@ -378,6 +378,33 @@ describe('sample fingerprint helpers', () => {
         // Only the two carriers are touched: a `node` or `os` member elsewhere, and a `capabilities` array, are behaviour.
         expect(stripHost({ node: 1, os: 'x', capabilities: ['a'], nested: { environment: { os: 'y', keep: 1 }, text: 'OS: not a list line' } })).toEqual({ node: 1, os: 'x', capabilities: ['a'], nested: { environment: { keep: 1 }, text: 'OS: not a list line' } });
         expect(semanticProjection(JSON.stringify({ structuredContent: { node: 1 } }))).toBe('{"structuredContent":{"node":1}}');
+        // reportsHost is the detector behind HOST_DEPENDENT_SAMPLES: the carriers and the lines, nothing else.
+        expect(reportsHost({ capabilities: { node: 'v22' } })).toBe(true);
+        expect(reportsHost({ compliance: { environment: { os: 'linux' } } })).toBe(true);
+        expect(reportsHost({ draftMarkdown: 'x\n- OS: linux\n' })).toBe(true);
+        expect(reportsHost({ node: 1, os: 'x', capabilities: ['a'], text: 'OS: not a list line', environment: { pkinativeMcp: '1.0.0' } })).toBe(false);
+    });
+
+    it.skipIf(!haveCorpus)('declares every host-dependent sample, and only those: a sample that starts or stops reporting the host fails here', () => {
+        expect(HOST_DEPENDENT_SAMPLES).toEqual(['describe-engine.json', 'draft-governance-issue.json']);
+        const sidecars = samples.map((p) => relPath(p)).filter((rel) => locate(rel).sidecar);
+        expect(sidecars.length).toBeGreaterThan(HOST_DEPENDENT_SAMPLES.length);
+        for (const rel of sidecars) {
+            const parsed = JSON.parse(readFileSync(join(OUTPUT_DIR, rel), 'utf8')) as Record<string, unknown>;
+            const results = Array.isArray(parsed['steps']) ? (parsed['steps'] as Record<string, unknown>[]) : [parsed];
+            const reports = results.some((r) => reportsHost(r['structuredContent']));
+            expect(reports, `${rel}: ${reports ? 'reports the host but is not listed in' : 'is listed in HOST_DEPENDENT_SAMPLES but no longer reports the host —'} HOST_DEPENDENT_SAMPLES`).toBe(HOST_DEPENDENT_SAMPLES.includes(rel));
+        }
+        // The declared ones project the same from another host and still catch a wording change.
+        for (const rel of HOST_DEPENDENT_SAMPLES) {
+            const text = readFileSync(join(OUTPUT_DIR, rel), 'utf8');
+            expect(text, `${rel} reports this host`).toContain(process.version);
+            const here = semanticProjection(text);
+            expect(here).not.toContain(process.version);
+            const elsewhere = text.split(process.version).join('v99.0.0').replace(/(- OS: |"os":"|"platform":")[^"\\\n]*/g, '$1elsewhere');
+            expect(semanticProjection(elsewhere), rel).toBe(here);
+            expect(semanticProjection(text.replace(/"(network|title)":"/, '"$1":"changed ')), rel).not.toBe(here);
+        }
     });
 
     it('reads the DER of a PEM or raw file, recognises a signed structure, and cuts out its first element', () => {

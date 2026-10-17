@@ -61,6 +61,11 @@ jobs:
         uses: github/codeql-action/init@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0
         with:
           languages: ${{ matrix.language }}
+          # The same suite as pkinative and pkinative-cli.
+          queries: security-extended
+          # tests/ is excluded — the TEST-ONLY passwords and hostile inputs it holds
+          # are followed into the server and reported as its defects (see the file).
+          config-file: ./.github/codeql/codeql-config.yml
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@7211b7c8077ea37d8641b6271f6a365a22a5fbfa # v4.36.0

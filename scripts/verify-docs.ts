@@ -73,7 +73,7 @@ import {
 } from './lib/mcp-surface.js';
 import { markdownAnchors, fragmentLinks } from './lib/markdown-anchors.js';
 import { buildSecretNeedles, findSecretMaterial } from './lib/secret-needles.js';
-import { CONFORMANT, REFUSED } from './lib/pki-corpus.js';
+import { CONFORMANT, KNOWN_OPENSSL_GAPS, REFUSED } from './lib/pki-corpus.js';
 import { COMMAND_IDS, COMMANDS } from './lib/interop-tools.js';
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -1273,6 +1273,7 @@ export async function verifyDocs(root: string, options: VerifyOptions = {}): Pro
                 declared?: { conformant?: unknown; refused?: unknown };
                 opensslCommands?: unknown;
                 levels?: Array<{ level?: unknown }>;
+                knownGaps?: unknown;
             }
             let interop: InteropDeclaration | null = null;
             try {
@@ -1295,6 +1296,9 @@ export async function verifyDocs(root: string, options: VerifyOptions = {}): Pro
                 const levels = (interop.levels ?? []).map((l: { level?: unknown }) => l.level);
                 if (levels.length !== 2 || levels[0] !== 0 || levels[1] !== 1) {
                     fail('docs/data/interop.json', 1, 'interop-counts', `levels must be [0, 1] (engine round trip, OpenSSL) — found [${levels.join(', ')}]`);
+                }
+                if (JSON.stringify(interop.knownGaps ?? null) !== JSON.stringify(KNOWN_OPENSSL_GAPS)) {
+                    fail('docs/data/interop.json', 1, 'interop-counts', `knownGaps differs from scripts/lib/pki-corpus.ts KNOWN_OPENSSL_GAPS (${KNOWN_OPENSSL_GAPS.length} documented gap(s) of the judge)`);
                 }
                 if (manifest.derived['corpusConformant'] !== undefined && manifest.derived['corpusConformant'] !== interop.declared?.conformant) {
                     fail(MANIFEST_REL, 1, 'interop-counts', `derived.corpusConformant says ${String(manifest.derived['corpusConformant'])} but docs/data/interop.json declares ${String(interop.declared?.conformant)}`);

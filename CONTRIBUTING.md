@@ -111,7 +111,7 @@ Per file the validator reports `PASS` / `FAIL` / `XFAIL` / `XPASS` / `INFRA` / `
 | 0 | Every expectation met — or OpenSSL is absent and level 1 was **skipped** with the reason (a skip is not a pass; the gate reports the step as **SKIP**, and `--require-all` turns it into a failure) |
 | 1 | An expectation not met (`FAIL` or `XPASS`), no negative canary, or the coverage canary tripped |
 | 2 | Infrastructure: corpus directory / manifest absent (run `corpus:pki` first), `dist/` missing, or OpenSSL installed but unusable |
-| 3 | OpenSSL required (`PKINATIVE_INTEROP_REQUIRED=1`) but absent |
+| 3 | OpenSSL required (`PKINATIVE_INTEROP_REQUIRED=1`) but absent, or below a floor of the known gaps of the judge (`KNOWN_OPENSSL_GAPS`, CONFORMANCE.md §4) while `PKINATIVE_INTEROP_FLOORS_REQUIRED=1` (the Windows and macOS legs) |
 
 The vitest form of level 1 is `tests/interop/openssl.test.ts` (`npm run test:interop`); `tests/interop/lint.test.ts` (`npm run test:lint-certs`, the gate's `lint:certs` step, publish profile) runs the zlint (v3.7.2, the release archive pinned by SHA-256 in `publish.yml`) and pkilint certificate linters over every certificate the corpus writes — a lint ERROR fixes the encoder, a WARNING or NOTICE is either fixed or waived with a reason in `scripts/data/lint-waivers.json` (none today); a stale waiver fails the test. `ZLINT` names the zlint binary and `PKILINT_PYTHON` the Python that imports `pkilint`; absent, the step skips with the reason (`REQUIRE_LINT=1` fails instead).
 

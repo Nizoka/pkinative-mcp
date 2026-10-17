@@ -278,6 +278,7 @@ PBMAC1), then make sure the right binary is found:
 | --- | --- |
 | `OPENSSL_BIN` | The binary to use (must exist). Otherwise whatever `openssl` is on `PATH`. |
 | `PKINATIVE_INTEROP_REQUIRED=1` | Fail closed: an absent or unusable OpenSSL is exit 3 instead of a skip (set in CI on every leg, and by the gate's `interop` step). |
+| `PKINATIVE_INTEROP_FLOORS_REQUIRED=1` | Fail closed on the known gaps of the judge (CONFORMANCE.md §4): a check an older OpenSSL may skip (the Ed25519 CMS verification, OpenSSL 3.5+) is exit 3 instead of a skip. Set on the Windows and macOS legs, whose judge is 3.5+; not on ubuntu (OpenSSL 3.0). |
 
 `scripts/lib/interop-tools.ts` qualifies the binary (`opensslMissing()`: "openssl not on
 PATH", "LibreSSL is not OpenSSL", "OpenSSL < 3.0") and records `openssl version` before

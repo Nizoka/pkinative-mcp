@@ -98,7 +98,7 @@ and execution is sequential), `<password:test-only>`. The table:
 | `leaf-ed25519`, `leaf-rsa-pkcs1`, `leaf-rsa-pss`, `leaf-ec` | `create_certificate` | a serverAuth leaf under each CA — the subject key from a CSR, a certificate or a PUBLIC KEY; SAN with DNS, IPv4 and IPv6 | as above |
 | `inter-pathlen0`, `leaf-under-inter` | `create_certificate` | a pathLen-0 intermediate and a leaf issued under it (`-untrusted` on the OpenSSL side) | intermediate: yes (signed by the Ed25519 CA); leaf: no (EC) |
 | `csr-ec-san`, `csr-rsa-pss`, `csr-ed25519` | `create_csr` | requests with a SAN extensionRequest, per family | Ed25519: yes |
-| `cms-attached`, `cms-detached`, `cms-ed25519-attached` | `sign_cms` | attached and detached SignedData over `content.txt` with the chain embedded; an Ed25519 signer against its own root | Ed25519: yes |
+| `cms-attached`, `cms-detached`, `cms-ed25519-attached` | `sign_cms` | attached and detached SignedData over `content.txt` with the chain embedded; an Ed25519 signer against its own root (its `cms -verify` is under the judge gap `cms-eddsa`, §4) | Ed25519: yes |
 | `tsq-sha256`, `tsq-sha384` | `create_timestamp_request` | TimeStampReq over data and over a digest, nonce and policy pinned | yes |
 | `ocsp-req-leaf`, `ocsp-req-revoked` | `create_ocsp_request` | OCSPRequest with a SHA-256 / SHA-1 CertID and a pinned nonce | yes |
 | `pem-root-cert`, `pem-inter-crl`, `pem-leaf-csr` | `convert_pem` | PEM re-encodings of DER fixtures (a certificate, a CRL, a request) | yes |
@@ -125,7 +125,7 @@ The 12 command families of `docs/data/interop.json`:
 | `req-verify` | `openssl req -inform DER -noout -verify` | `Certificate request self-signature verify OK` |
 | `req-verify-pem` | `openssl req -inform PEM -noout -verify` | the same on the PEM re-encoding |
 | `crl-text-pem` | `openssl crl -inform PEM -noout -text` | a dump of the re-encoded intermediate CRL |
-| `cms-verify-attached` | `openssl cms -verify -binary -inform DER -CAfile <root> -purpose any [-attime <t>] -out <devnull>` | `CMS Verification successful` (the fixture root; the Ed25519 signer against its own root) |
+| `cms-verify-attached` | `openssl cms -verify -binary -inform DER -CAfile <root> -purpose any [-attime <t>] -out <devnull>` | `CMS Verification successful` (the fixture root; the Ed25519 signer against its own root — gap `cms-eddsa` below) |
 | `cms-verify-detached` | `… -content <file> …` | the same with the detached content |
 | `asn1parse` | `openssl asn1parse -inform DER` | a dump of the EC request |
 | `ocsp-req-text` | `openssl ocsp -reqin <file> -req_text` | the `Serial Number` of each OCSP request |
@@ -136,6 +136,24 @@ stdout and every failure on stderr; `req -verify` and `cms -verify` report succe
 stderr on 3.x. Absent or unusable OpenSSL is reported as a **skip with the reason** — never
 simulated — unless `PKINATIVE_INTEROP_REQUIRED=1` (CI, and the gate's `interop` step), where
 it is exit 3.
+
+### Known gaps of the judge
+
+What OpenSSL cannot verify before a given release is declared once, in
+`scripts/lib/pki-corpus.ts` (`KNOWN_OPENSSL_GAPS`: the checks covered, the OpenSSL floor, the
+reason and the proof), the way the engine declares its own in pkinative's
+`scripts/lib/interop.ts`. `docs/data/interop.json` carries the same table (`knownGaps`) and
+this section names every gap; `tests/tools/pki-corpus.test.ts` and `verify:docs` hold the
+three together. A judge below the floor **skips** the covered check with the reason on the
+entry's PASS line and the summary counts it (`N OpenSSL check(s) skipped below a floor`);
+level 0 still judges the bytes. On the CI legs whose judge is OpenSSL 3.5+ (windows-latest
+and macos-latest: Git for Windows and Homebrew), `PKINATIVE_INTEROP_FLOORS_REQUIRED=1` turns
+such a skip into exit 3, so every check runs on at least one required leg and a runner image
+falling behind a floor is visible, never a quiet skip.
+
+| Gap | Checks | Floor | Reason | Proof |
+|---|---|---|---|---|
+| `cms-eddsa` | `cms-ed25519-attached` → `cms-verify-attached` | OpenSSL 3.5 | Ed25519 signs the data, not a digest (RFC 8419). OpenSSL before 3.5.0 refuses every digest for EdDSA in CMS (`eddsa_digest_signverify_init: invalid digest`) and can neither sign nor verify an Ed25519 SignedData; 3.5.0 added the signature schemes without a signing digest to CMS. | Verifies with `openssl cms -verify` on OpenSSL 3.5.5 (Windows, macOS); fails with that error on 3.0.13 (Ubuntu 24.04) and 3.0.2 (Ubuntu 22.04); the engine round trip accepts it on every host. |
 
 The read direction lives in `tests/interop/openssl.test.ts` (`npm run test:interop`): a CA
 and a leaf per signature family produced by the tools and verified by OpenSSL with
@@ -163,7 +181,7 @@ Per entry the validator reports:
 | 0 | Every expectation met — **or** OpenSSL is absent and `PKINATIVE_INTEROP_REQUIRED` is unset: level 1 is **skipped** (a skip of level 1, not a pass of it; level 0 verdicts still hold) |
 | 1 | A conformance expectation was not met (`FAIL` / `XPASS`), or the coverage canary tripped (the written / refused counts differ from `docs/data/interop.json`) |
 | 2 | Corpus directory / manifest or `dist/` absent — run `npm run build && npm run corpus:pki` first; OpenSSL installed but unusable |
-| 3 | OpenSSL required (`PKINATIVE_INTEROP_REQUIRED=1`) but not found |
+| 3 | OpenSSL required (`PKINATIVE_INTEROP_REQUIRED=1`) but not found; or the judge is below a floor of the known gaps (§4) while `PKINATIVE_INTEROP_FLOORS_REQUIRED=1` |
 
 ## 6. Running it locally
 
@@ -188,8 +206,10 @@ commands directly: `openssl x509 -inform DER -in out.der -noout -text`,
   `interop (windows-latest)` are **required status checks** (`.github/rulesets/main.json`);
   ubuntu-22.04 (OpenSSL 3.0, no PBMAC1) and macOS (Homebrew OpenSSL 3 next to the system
   LibreSSL) report but do not block, because their OpenSSL builds differ in ways that are
-  theirs. The workflow carries no `paths:` filter, so a required check can never be left
-  "Expected — waiting for status"; tool versions land in the job summary and the raw
+  theirs. windows-latest and macos-latest also carry `PKINATIVE_INTEROP_FLOORS_REQUIRED=1`:
+  their OpenSSL 3.5+ must run every check under a known gap (§4), the ubuntu legs skip those
+  with the reason. The workflow carries no `paths:` filter, so a required check can never be
+  left "Expected — waiting for status"; tool versions land in the job summary and the raw
   transcripts are uploaded as artifacts.
 - `.github/workflows/ci.yml` — the gate's CI profile with `--require-all` on ubuntu × Node
   22 / 24, windows-latest and macos-latest: the corpus and `validate:pki` run there too,

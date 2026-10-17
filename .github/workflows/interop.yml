@@ -18,6 +18,12 @@ name: OpenSSL interoperability
 # theirs, and a red run there is a report, not a merge blocker.
 # PKINATIVE_INTEROP_REQUIRED=1 turns "openssl not found" into a failure rather
 # than a skip, so a runner image change can never make the judge disappear.
+# PKINATIVE_INTEROP_FLOORS_REQUIRED=1 (windows-latest, macos-latest — Git for
+# Windows and Homebrew carry OpenSSL 3.5+) holds those legs to every floor of
+# scripts/lib/pki-corpus.ts KNOWN_OPENSSL_GAPS: a check an older judge may
+# skip (the Ed25519 CMS verification, OpenSSL 3.5+) must run on at least one
+# required leg, and a runner image falling below a floor is exit 3, not a
+# quiet skip. The ubuntu legs (OpenSSL 3.0) skip such a check with the reason.
 #
 # No `paths:` filter: a required check that never reports leaves the pull
 # request on "Expected — waiting for status" forever (see sample-regression.yml).
@@ -50,6 +56,8 @@ jobs:
     timeout-minutes: 30
     env:
       PKINATIVE_INTEROP_REQUIRED: '1'
+      # Every floor of KNOWN_OPENSSL_GAPS must be reached where OpenSSL 3.5+ is the judge (see header).
+      PKINATIVE_INTEROP_FLOORS_REQUIRED: ${{ startsWith(matrix.os, 'ubuntu') && '0' || '1' }}
 
     strategy:
       fail-fast: false
@@ -124,7 +132,9 @@ jobs:
       # scripts/validate-pki.ts: 0 all expectations met · 1 conformance FAIL /
       # XPASS / coverage canary · 2 INFRA (no corpus, OpenSSL unusable or no
       # report — not a verdict) · 3 OpenSSL absent while
-      # PKINATIVE_INTEROP_REQUIRED=1 (the runner image lost its judge).
+      # PKINATIVE_INTEROP_REQUIRED=1 (the runner image lost its judge), or a
+      # judge below a floor of KNOWN_OPENSSL_GAPS while
+      # PKINATIVE_INTEROP_FLOORS_REQUIRED=1 (the image fell behind).
       - name: Validate the corpus with OpenSSL (blocking)
         id: validate
         shell: bash
@@ -164,7 +174,7 @@ jobs:
             0) verdict='all expectations met' ;;
             1) verdict='CONFORMANCE failure (FAIL, XPASS or coverage canary — see report)' ;;
             2) verdict='INFRA failure — no corpus, OpenSSL unusable or no report (NOT a conformance verdict)' ;;
-            3) verdict='INFRA failure — OpenSSL not found although PKINATIVE_INTEROP_REQUIRED=1 (NOT a conformance verdict)' ;;
+            3) verdict='INFRA failure — OpenSSL not found although PKINATIVE_INTEROP_REQUIRED=1, or below a floor of KNOWN_OPENSSL_GAPS although PKINATIVE_INTEROP_FLOORS_REQUIRED=1 (NOT a conformance verdict)' ;;
             *) verdict="unknown (exit ${code:-n/a})" ;;
           esac
           {

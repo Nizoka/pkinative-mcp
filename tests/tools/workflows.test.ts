@@ -149,6 +149,27 @@ describe('every workflow job', () => {
             expect(text, `${f}: openssl version recorded`).toMatch(/run: openssl version/);
         }
     });
+
+    it('holds the legs whose judge is OpenSSL 3.5+ (Windows, macOS) to every floor of KNOWN_OPENSSL_GAPS, and lets the ubuntu legs skip with the reason', () => {
+        // ci.yml: the Linux `ci` job never sets the floors; the `os` job (windows-latest, macos-latest) always does.
+        const ci = readWorkflow('ci.yml');
+        const jobs = jobSteps(ci);
+        expect((jobs.get('ci') ?? []).join('\n')).not.toContain('PKINATIVE_INTEROP_FLOORS_REQUIRED');
+        expect((jobs.get('os') ?? []).join('\n')).toMatch(/PKINATIVE_INTEROP_REQUIRED:\s*'1'\s*\n(?:\s*#[^\n]*\n)*\s*PKINATIVE_INTEROP_FLOORS_REQUIRED:\s*'1'/);
+        // interop.yml: one matrix, the floors required off ubuntu.
+        const interop = readWorkflow('interop.yml');
+        expect(interop).toMatch(/PKINATIVE_INTEROP_FLOORS_REQUIRED:\s*\$\{\{ startsWith\(matrix\.os, 'ubuntu'\) && '0' \|\| '1' \}\}/);
+        expect(interop).toMatch(/3\) verdict='INFRA failure[^\n]*PKINATIVE_INTEROP_FLOORS_REQUIRED=1/);
+    });
+
+    it('analyses with the security-extended suite like pkinative and pkinative-cli, over the shipped code only', () => {
+        const codeql = readWorkflow('codeql.yml');
+        expect(codeql).toMatch(/queries:\s*security-extended/);
+        expect(codeql).toMatch(/config-file:\s*\.\/\.github\/codeql\/codeql-config\.yml/);
+        const config = readFileSync(join(ROOT, '.github', 'codeql', 'codeql-config.yml'), 'utf8');
+        expect(config).toMatch(/^paths-ignore:\s*\n\s*- tests\s*$/m);
+        expect(config).toMatch(/holdsSecret|isCacheable/); // the justification names the invariant it rests on
+    });
 });
 
 // ── The gate is the only definition of green ─────────────────────────
@@ -517,6 +538,10 @@ describe('dependency review and audit', () => {
         expect(review).toMatch(/uses: actions\/dependency-review-action@[0-9a-f]{40}/);
         expect(review).toMatch(/fail-on-severity:\s*high/);
         expect(review).toMatch(/allow-licenses:\s*MIT, ISC, BSD-2-Clause, BSD-3-Clause, Apache-2.0, 0BSD, CC0-1.0, Unlicense/);
+        // The publish-profile linter's Python tree (a runner tool, hash-pinned) is exempted by package, never by licence.
+        expect(review).toMatch(/allow-dependencies-licenses:\s*pkg:pypi\/cffi, pkg:pypi\/iso4217, pkg:pypi\/pkilint, pkg:pypi\/publicsuffixlist\s*$/m);
+        expect(review).not.toMatch(/^\s*deny-licenses:/m);
+        expect(review).not.toMatch(/allow-licenses:.*(MPL-2\.0|MIT-0|LicenseRef)/);
         expect(review).toMatch(/comment-summary-in-pr:\s*on-failure/);
     });
 

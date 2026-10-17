@@ -18,7 +18,12 @@
  *            `ts -query -text` — the command ids of scripts/lib/interop-tools.ts.
  *            SKIPPED with the reason when a usable OpenSSL is absent
  *            (exit 0 is a skip, not a pass; the gate's --require-all and
- *            PKINATIVE_INTEROP_REQUIRED=1 turn it into a failure).
+ *            PKINATIVE_INTEROP_REQUIRED=1 turn it into a failure). A check
+ *            under a documented gap of the judge (KNOWN_OPENSSL_GAPS, with
+ *            an OpenSSL floor, a reason and a proof) is skipped by an older
+ *            judge with the reason on the PASS line; a leg that must carry
+ *            the floors sets PKINATIVE_INTEROP_FLOORS_REQUIRED=1 and gets
+ *            exit 3 instead.
  *
  * Outcomes per entry (one line each on stdout):
  *   PASS     every check met
@@ -52,8 +57,8 @@ import { join, relative } from 'node:path';
 
 import { REPO_ROOT, fixturePath, parseOutputMode, prepareSandbox, removeSandbox } from './helpers/io.js';
 import { errorText, loadBuiltServer, type BuiltServer } from './helpers/server.js';
-import { COMMANDS, judgeWithOpenssl, locateOpenssl, opensslMissing, opensslVersion, type CommandContext } from './lib/interop-tools.js';
-import { CORPUS, CORPUS_ATTIME, CONFORMANT, REFUSED, resolvePlaceholders, type CorpusEntry, type FileRef, type ProducedBytes } from './lib/pki-corpus.js';
+import { COMMANDS, judgeWithOpenssl, locateOpenssl, opensslMissing, opensslVersion, type CommandContext, type OpensslVersion } from './lib/interop-tools.js';
+import { CORPUS, CORPUS_ATTIME, CONFORMANT, REFUSED, opensslAtLeast, opensslGapFor, resolvePlaceholders, type CorpusEntry, type FileRef, type ProducedBytes } from './lib/pki-corpus.js';
 import { CORPUS_DIR, MANIFEST_PATH, loadManifest, type ManifestEntry } from './lib/pki-corpus-manifest.js';
 
 export const EXIT_OK = 0;
@@ -63,6 +68,8 @@ export const EXIT_TOOL_MISSING = 3;
 
 const INTEROP_JSON = join(REPO_ROOT, 'docs', 'data', 'interop.json');
 const REQUIRED_ENV = 'PKINATIVE_INTEROP_REQUIRED';
+/** `1` on the CI legs whose judge must reach every floor of KNOWN_OPENSSL_GAPS: a skipped floored check is then exit 3, not a note. */
+const FLOORS_REQUIRED_ENV = 'PKINATIVE_INTEROP_FLOORS_REQUIRED';
 
 interface Declared {
     readonly conformant: number;
@@ -139,10 +146,23 @@ async function levelZero(server: BuiltServer, entry: CorpusEntry, record: Manife
     return { failures, checks };
 }
 
-function levelOne(entry: CorpusEntry, file: string, files: ReadonlyMap<string, string>, reportDir: string): { failures: string[]; checks: number } {
+/**
+ * Level 1: every OpenSSL check of the entry. A check under a documented gap
+ * (KNOWN_OPENSSL_GAPS) whose floor the judge does not reach is skipped with
+ * the reason — named on the PASS line, never a failure of the entry: the
+ * bytes were judged by level 0 on this host and by a newer OpenSSL on the
+ * CI legs that carry the floors.
+ */
+function levelOne(entry: CorpusEntry, file: string, files: ReadonlyMap<string, string>, reportDir: string, version: OpensslVersion | null): { failures: string[]; checks: number; skipped: string[] } {
     const failures: string[] = [];
+    const skipped: string[] = [];
     let checks = 0;
     for (const check of entry.expect?.openssl ?? []) {
+        const gap = opensslGapFor(entry.id, check.command);
+        if (gap !== undefined && version !== null && !opensslAtLeast(version, gap.minOpenssl)) {
+            skipped.push(`${check.command} needs OpenSSL ${gap.minOpenssl}+ (gap ${gap.id}; judge: ${version.raw})`);
+            continue;
+        }
         checks++;
         let ctx: CommandContext;
         try {
@@ -162,7 +182,7 @@ function levelOne(entry: CorpusEntry, file: string, files: ReadonlyMap<string, s
         writeFileSync(join(reportDir, `${entry.id}.${check.command}.txt`), `$ openssl ${r.args.join(' ')}\n--- exit ${String(r.run.status)}\n--- stdout\n${r.run.stdout}\n--- stderr\n${r.run.stderr}\n`);
         if (!r.ok) failures.push(`openssl ${COMMANDS[check.command].describe}: ${r.detail}`);
     }
-    return { failures, checks };
+    return { failures, checks, skipped };
 }
 
 async function main(): Promise<number> {
@@ -266,12 +286,12 @@ async function main(): Promise<number> {
             files.set(entry.id, file);
 
             const l0 = await levelZero(server, entry, record, produced, bytes);
-            const l1 = missing === null ? levelOne(entry, file, files, reportDir) : { failures: [], checks: 0 };
+            const l1 = missing === null ? levelOne(entry, file, files, reportDir, version) : { failures: [], checks: 0, skipped: [] };
             const details = [...l0.failures, ...l1.failures];
             const outcome: Outcome = details.length === 0 ? 'PASS' : 'FAIL';
-            verdicts.push({ id: entry.id, outcome, details, level0: l0.checks, level1: l1.checks });
+            verdicts.push({ id: entry.id, outcome, details: [...details, ...l1.skipped.map((s) => `skipped: ${s}`)], level0: l0.checks, level1: l1.checks });
             if (outcome === 'PASS') {
-                if (!quiet) out(`  PASS     ${rel}  (${l0.checks} engine, ${l1.checks} openssl)`);
+                if (!quiet) out(`  PASS     ${rel}  (${l0.checks} engine, ${l1.checks} openssl${l1.skipped.length > 0 ? `; skipped: ${l1.skipped.join('; ')}` : ''})`);
             } else {
                 out(`  FAIL     ${rel}`);
                 for (const d of details) out(`           - ${d}`);
@@ -282,14 +302,21 @@ async function main(): Promise<number> {
         const counts = { PASS: count('PASS'), FAIL: count('FAIL'), REFUSED: count('REFUSED'), XPASS: count('XPASS'), SKIP: count('SKIP') };
         const level0 = verdicts.reduce((n, v) => n + v.level0, 0);
         const level1 = verdicts.reduce((n, v) => n + v.level1, 0);
-        const code = counts.FAIL > 0 || counts.XPASS > 0 ? EXIT_CONFORMANCE : EXIT_OK;
+        // The floored checks the judge could not run (KNOWN_OPENSSL_GAPS): a note, or exit 3 on a leg that must carry the floors.
+        const floorsSkipped = verdicts.flatMap((v) => v.details.filter((d) => d.startsWith('skipped: ')).map((d) => `${v.id}: ${d.slice('skipped: '.length)}`));
+        const floorsRequired = process.env[FLOORS_REQUIRED_ENV] === '1';
+        const code = counts.FAIL > 0 || counts.XPASS > 0 ? EXIT_CONFORMANCE : floorsRequired && floorsSkipped.length > 0 ? EXIT_TOOL_MISSING : EXIT_OK;
         if (json) {
-            process.stdout.write(`${JSON.stringify({ ok: code === EXIT_OK, counts, level0Checks: level0, level1Checks: level1, openssl: version?.raw ?? null, opensslSkipped: missing, verdicts, manifest: MANIFEST_PATH }, null, 2)}\n`);
+            process.stdout.write(`${JSON.stringify({ ok: code === EXIT_OK, counts, level0Checks: level0, level1Checks: level1, level1Skipped: floorsSkipped, floorsRequired, openssl: version?.raw ?? null, opensslSkipped: missing, verdicts, manifest: MANIFEST_PATH }, null, 2)}\n`);
             return code;
         }
         out('');
-        out(`Summary: ${counts.PASS} PASS, ${counts.REFUSED} REFUSED, ${counts.FAIL} FAIL, ${counts.XPASS} XPASS, ${counts.SKIP} SKIP (of ${verdicts.length} entries; ${level0} engine checks, ${level1} OpenSSL checks${missing !== null ? ` — OpenSSL level SKIPPED: ${missing}` : version !== null ? ` with ${version.raw}` : ''}).`);
+        out(`Summary: ${counts.PASS} PASS, ${counts.REFUSED} REFUSED, ${counts.FAIL} FAIL, ${counts.XPASS} XPASS, ${counts.SKIP} SKIP (of ${verdicts.length} entries; ${level0} engine checks, ${level1} OpenSSL checks${floorsSkipped.length > 0 ? `, ${floorsSkipped.length} OpenSSL check(s) skipped below a floor` : ''}${missing !== null ? ` — OpenSSL level SKIPPED: ${missing}` : version !== null ? ` with ${version.raw}` : ''}).`);
         if (counts.XPASS > 0) out('XPASS: a canary the server must refuse produced bytes — the refusal is not real; do not trust the PASS lines.');
+        if (floorsSkipped.length > 0 && code === EXIT_TOOL_MISSING) {
+            log(`${FLOORS_REQUIRED_ENV}=1 but the judge is below a floor of KNOWN_OPENSSL_GAPS — this leg must carry an OpenSSL that runs every check:`);
+            for (const s of floorsSkipped) log(`  - ${s}`);
+        }
         if (code === EXIT_OK) out(missing === null ? 'All expectations met.' : 'All engine expectations met; the OpenSSL level was skipped (exit 0 is a skip, not a pass).');
         return code;
     } finally {

@@ -54,6 +54,27 @@ export const VOLATILE_MEMBERS: readonly string[] = ['evaluatedAt', 'sha256', 'si
 export const HOST_MEMBERS: Readonly<Record<string, readonly string[]>> = { capabilities: ['node', 'platform'], environment: ['node', 'os'] };
 const HOST_LINE = /^- (Node|OS): .*$/gm;
 
+/**
+ * The samples that report the host, declared: `describe_engine` (its
+ * `capabilities`) and `draft_governance_issue` (its compliance `environment`
+ * and the draft's Environment section). The regression suite holds the set
+ * both ways — a listed sample that stops reporting the host, or an unlisted
+ * one that starts, fails loudly (pdfnative-mcp keeps the same list).
+ */
+export const HOST_DEPENDENT_SAMPLES: readonly string[] = ['describe-engine.json', 'draft-governance-issue.json'];
+
+/** True when a result carries a host member or a host line anywhere. */
+export function reportsHost(value: unknown): boolean {
+    if (typeof value === 'string') return new RegExp(HOST_LINE.source, 'm').test(value);
+    if (Array.isArray(value)) return value.some(reportsHost);
+    if (value === null || typeof value !== 'object') return false;
+    return Object.entries(value as Record<string, unknown>).some(([k, v]) => {
+        const members = HOST_MEMBERS[k];
+        if (members !== undefined && v !== null && typeof v === 'object' && !Array.isArray(v) && members.some((m) => m in (v as Record<string, unknown>))) return true;
+        return reportsHost(v);
+    });
+}
+
 /** The value with the host members removed and the host lines of every string neutralised, at every depth. */
 export function stripHost(value: unknown): unknown {
     if (typeof value === 'string') return value.replace(HOST_LINE, '- $1: <host>');

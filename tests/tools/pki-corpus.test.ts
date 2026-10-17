@@ -10,13 +10,14 @@ import { resolve } from 'node:path';
 import { fixtureExists, fixtureBytes } from '../../scripts/helpers/io.js';
 import { COMMAND_IDS, COMMANDS } from '../../scripts/lib/interop-tools.js';
 import {
-    CONFORMANT, CORPUS, REFUSED, SHA256_OID_HEX, checkOcspRequest, checkTimestampRequest, corpusDependencies, opensslCommandsUsed, placeholdersOf, resolvePlaceholders,
+    CONFORMANT, CORPUS, KNOWN_OPENSSL_GAPS, REFUSED, SHA256_OID_HEX, checkOcspRequest, checkTimestampRequest, corpusDependencies, opensslAtLeast, opensslCommandsUsed, opensslGapFor,
+    placeholdersOf, resolvePlaceholders,
 } from '../../scripts/lib/pki-corpus.js';
 import { countStatuses, fileNameFor } from '../../scripts/lib/pki-corpus-manifest.js';
 import { fixtureBase64, fixtureText } from '../_pki-fixtures.js';
 
 const ROOT = resolve(import.meta.dirname, '..', '..');
-const interop = JSON.parse(readFileSync(resolve(ROOT, 'docs', 'data', 'interop.json'), 'utf8')) as { schemaVersion: number; declared: { conformant: number; refused: number }; opensslCommands: string[]; levels: Array<{ level: number }> };
+const interop = JSON.parse(readFileSync(resolve(ROOT, 'docs', 'data', 'interop.json'), 'utf8')) as { schemaVersion: number; declared: { conformant: number; refused: number }; opensslCommands: string[]; levels: Array<{ level: number }>; knownGaps: unknown };
 
 describe('pki-corpus: the table', () => {
     it('has unique ids and a kind, tool and arguments on every entry', () => {
@@ -88,6 +89,34 @@ describe('pki-corpus: the table', () => {
         expect(interop.declared).toEqual({ conformant: CONFORMANT.length, refused: REFUSED.length });
         expect(interop.opensslCommands).toEqual(COMMAND_IDS.map((id) => COMMANDS[id].describe));
         expect(interop.levels.map((l) => l.level)).toEqual([0, 1]);
+    });
+
+    it('declares every known gap of the judge once, with a floor, a reason and a proof, over checks the table really runs; docs/data/interop.json and CONFORMANCE.md carry the same table', () => {
+        expect(KNOWN_OPENSSL_GAPS.map((g) => g.id)).toEqual(['cms-eddsa']);
+        const checks = new Set(CONFORMANT.flatMap((e) => (e.expect?.openssl ?? []).map((c) => `${e.id}:${c.command}`)));
+        for (const gap of KNOWN_OPENSSL_GAPS) {
+            expect(gap.minOpenssl).toMatch(/^3\.\d+$/);
+            expect(gap.reason.length, gap.id).toBeGreaterThan(40);
+            expect(gap.proof.length, gap.id).toBeGreaterThan(40);
+            expect(gap.match.length, gap.id).toBeGreaterThan(0);
+            for (const m of gap.match) expect(checks.has(m), `${gap.id} covers ${m}, which no entry runs`).toBe(true);
+        }
+        expect(opensslGapFor('cms-ed25519-attached', 'cms-verify-attached')?.minOpenssl).toBe('3.5');
+        expect(opensslGapFor('cms-attached', 'cms-verify-attached')).toBeUndefined();
+        expect(opensslGapFor('cms-ed25519-attached', 'x509-text')).toBeUndefined();
+        expect(interop.knownGaps).toEqual(KNOWN_OPENSSL_GAPS);
+        const guide = readFileSync(resolve(ROOT, 'docs', 'guides', 'CONFORMANCE.md'), 'utf8');
+        for (const gap of KNOWN_OPENSSL_GAPS) {
+            expect(guide, `CONFORMANCE.md names the gap ${gap.id}`).toContain(`\`${gap.id}\``);
+            expect(guide, `CONFORMANCE.md names the floor of ${gap.id}`).toContain(`OpenSSL ${gap.minOpenssl}`);
+        }
+        const v = (major: number, minor: number) => ({ major, minor });
+        expect(opensslAtLeast(v(3, 0), '3.5')).toBe(false);
+        expect(opensslAtLeast(v(3, 4), '3.5')).toBe(false);
+        expect(opensslAtLeast(v(3, 5), '3.5')).toBe(true);
+        expect(opensslAtLeast(v(3, 6), '3.5')).toBe(true);
+        expect(opensslAtLeast(v(4, 0), '3.5')).toBe(true);
+        expect(opensslAtLeast(v(3, 10), '3.5')).toBe(true);
     });
 
     it('names a file per kind', () => {
