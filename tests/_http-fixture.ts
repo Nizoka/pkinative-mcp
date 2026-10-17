@@ -9,7 +9,7 @@ import type { AddressInfo } from 'node:net';
 import { createMcpHandler, type McpHttpHandler } from '@modelcontextprotocol/server';
 
 import { guardBearer } from '../src/auth.js';
-import { guardLoopback, RequestTooLargeError, sendWebResponse, toWebRequest } from '../src/http.js';
+import { guardLoopback, RequestTooLargeError, sendWebResponse, toWebRequest, MAX_REQUEST_BODY_BYTES } from '../src/http.js';
 import { createServer } from '../src/server.js';
 
 export interface HttpFixture {
@@ -35,7 +35,8 @@ export async function startHttpFixture(opts?: HttpFixtureOptions): Promise<HttpF
     const onerror = (err: Error): void => {
         errors.push(err);
     };
-    const handler = createMcpHandler(() => createServer(), { legacy: 'stateless', onerror });
+    // The SDK's own body bound follows the fixture cap (A2-045), as src/cli.ts raises it to the documented envelope.
+    const handler = createMcpHandler(() => createServer(), { legacy: 'stateless', onerror, maxRequestBodySize: opts?.maxBodyBytes ?? MAX_REQUEST_BODY_BYTES });
     const httpServer: HttpServer = createHttpServer();
     await new Promise<void>((resolve) => httpServer.listen(0, '127.0.0.1', () => resolve()));
     const port = (httpServer.address() as AddressInfo).port;

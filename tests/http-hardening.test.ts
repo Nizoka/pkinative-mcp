@@ -61,6 +61,29 @@ describe('HTTP transport — request-body cap', () => {
     });
 });
 
+describe('A2-045: the SDK body bound follows the documented 256 MiB envelope', () => {
+    let fx: HttpFixture;
+    beforeAll(async () => {
+        await ensureEngineReady();
+        fx = await startHttpFixture();
+    });
+    afterAll(async () => {
+        await fx.close();
+    });
+
+    it('A2-045: a 5 MiB body (above the SDK default of 4 MiB) reaches the server instead of a 413', async () => {
+        const padding = 'x'.repeat(5 * 1024 * 1024);
+        const { headers, body } = modernRequest('tools/call', { name: 'describe_engine', arguments: { padding } });
+        expect(Buffer.byteLength(body)).toBeGreaterThan(4 * 1024 * 1024);
+        const r = await send(fx.port, { headers, body });
+        expect(r.status).toBe(200);
+        // The call itself is refused by the schema (unknown key), proving the body was parsed and dispatched.
+        const result = r.json?.['result'] as { isError?: boolean; _meta?: { error?: { code?: string } } };
+        expect(result.isError).toBe(true);
+        expect(result._meta?.error?.code).toBe('VALIDATION_ERROR');
+    });
+});
+
 describe('HTTP transport — keep-alive listener hygiene', () => {
     let fx: HttpFixture;
     const sockets = new Set<Socket>();

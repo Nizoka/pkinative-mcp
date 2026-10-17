@@ -42,6 +42,8 @@
  * # Then connect via: http://127.0.0.1:3000/mcp
  * ```
  */
+import { isAbsolute } from 'node:path';
+
 import { getCeilings, MAX_INPUT_BYTES_ENV, MAX_KDF_ITERATIONS_ENV, MAX_PATHS_EXPLORED_ENV, STDIO_MAX_FRAME_BYTES } from './caps.js';
 import { PASSWORD_ENV } from './secrets.js';
 import { createServer, ensureEngineReady } from './server.js';
@@ -64,13 +66,23 @@ async function main(): Promise<void> {
 
     const factory = (): ReturnType<typeof createServer> => createServer();
     const onerror = (err: Error): void => log(`transport error: ${err.message}`);
+    // B2-054: an operator knob is valid or the server does not start — never a silent fallback to stdio.
     const portEnv = process.env['PKINATIVE_MCP_PORT'];
-    const port = portEnv !== undefined ? parseInt(portEnv, 10) : NaN;
+    const portText = portEnv?.trim() ?? '';
+    const port = portText !== '' ? Number(portText) : null;
+    if (port !== null && (!/^\d+$/.test(portText) || port < 1 || port > 65535)) {
+        throw new Error(`PKINATIVE_MCP_PORT must be an integer between 1 and 65535 (got ${JSON.stringify(portEnv)}); unset it for stdio.`);
+    }
+    // A2-039: the sandbox is an absolute path (README) or the server does not start.
+    const outputDir = process.env['PKINATIVE_MCP_OUTPUT_DIR'];
+    if (outputDir !== undefined && outputDir.trim() !== '' && !isAbsolute(outputDir.trim())) {
+        throw new Error(`PKINATIVE_MCP_OUTPUT_DIR must be an absolute path (got ${JSON.stringify(outputDir)}).`);
+    }
 
-    if (!Number.isNaN(port) && port > 0 && port < 65536) {
+    if (port !== null) {
         // --- HTTP / Streamable HTTP transport ---
         const { createMcpHandler } = await import('@modelcontextprotocol/server');
-        const { guardLoopback, sendWebResponse, toWebRequest, RequestTooLargeError } = await import('./http.js');
+        const { guardLoopback, sendWebResponse, toWebRequest, RequestTooLargeError, MAX_REQUEST_BODY_BYTES } = await import('./http.js');
         const { createServer: createHttpServer } = await import('node:http');
         const { guardBearer, readHttpToken } = await import('./auth.js');
         // Opt-in bearer token (PKINATIVE_MCP_HTTP_TOKEN); a weak value throws before we listen.
@@ -78,7 +90,8 @@ async function main(): Promise<void> {
 
         // Both eras: 2026-07-28 requests are served by a fresh per-request instance;
         // 2025-era requests fall back to the stateless streamable-HTTP idiom.
-        const handler = createMcpHandler(factory, { legacy: 'stateless', onerror });
+        // A2-045: the SDK's own body bound (4 MiB by default) is raised to the documented 256 MiB envelope.
+        const handler = createMcpHandler(factory, { legacy: 'stateless', onerror, maxRequestBodySize: MAX_REQUEST_BODY_BYTES });
         const origin = `http://127.0.0.1:${port}`;
 
         const httpServer = createHttpServer((req, res) => {

@@ -32,6 +32,38 @@ if (!hasDist && !inCi) {
     console.warn(`[cli-stdio] dist/cli.js not found — run \`npm run build\` first; skipping the stdio smoke suite (it FAILS under CI).`);
 }
 
+function bootWith(env: Record<string, string>): Promise<{ code: number | null; stderr: string }> {
+    return new Promise((resolve) => {
+        const child = spawn(process.execPath, [CLI], { stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, PKINATIVE_MCP_PORT: '', ...env } });
+        let stderr = '';
+        child.stderr.on('data', (c: Buffer) => {
+            stderr += c.toString('utf8');
+        });
+        const timer = setTimeout(() => child.kill('SIGKILL'), 15_000);
+        child.on('exit', (code) => {
+            clearTimeout(timer);
+            resolve({ code, stderr });
+        });
+        // A server that boots waits on stdin: closing it ends the session either way.
+        setTimeout(() => child.stdin.end(), 3_000);
+    });
+}
+
+describe.skipIf(!hasDist)('B2-054 / A2-039: an invalid operator knob refuses to start', () => {
+    it.each([['70000'], ['abc'], ['0'], ['-5'], ['8080.5']])('B2-054: PKINATIVE_MCP_PORT=%s is refused with a clean line, never a silent stdio fallback', async (port) => {
+        const { code, stderr } = await bootWith({ PKINATIVE_MCP_PORT: port });
+        expect(code, stderr).toBe(1);
+        expect(stderr).toContain('PKINATIVE_MCP_PORT must be an integer between 1 and 65535');
+        expect(stderr).not.toContain('ready (stdio transport');
+    }, 30_000);
+
+    it('A2-039: a relative PKINATIVE_MCP_OUTPUT_DIR is refused', async () => {
+        const { code, stderr } = await bootWith({ PKINATIVE_MCP_OUTPUT_DIR: 'relative/dir' });
+        expect(code, stderr).toBe(1);
+        expect(stderr).toContain('PKINATIVE_MCP_OUTPUT_DIR must be an absolute path');
+    }, 30_000);
+});
+
 describe('dist/cli.js presence', () => {
     it.runIf(inCi)('is built before the test run in CI (build must precede test in every workflow)', () => {
         expect(hasDist, `dist/cli.js is missing under CI — run \`npm run build\` before \`npm test\` (see .github/workflows/*.yml)`).toBe(true);
