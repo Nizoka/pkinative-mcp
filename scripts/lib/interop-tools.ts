@@ -15,7 +15,8 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { statSync } from 'node:fs';
+import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
 
 // ── Locate and qualify the binary ───────────────────────────────────
 
@@ -311,10 +312,44 @@ export const COMMANDS: Readonly<Record<CommandId, Command>> = {
 
 export const COMMAND_IDS = Object.keys(COMMANDS) as readonly CommandId[];
 
-/** Build, run and classify one corpus command. */
+// ── Trust files are PEM ──────────────────────────────────────────────
+// `-CAfile` and `-untrusted` are documented as PEM; OpenSSL 3.0 reads them
+// through `X509_LOOKUP_load_file(…, X509_FILETYPE_PEM)` and answers a DER
+// file with "no certificate or crl found" (ubuntu's 3.0.x), while 3.2+ happens
+// to autodetect DER (a developer's 3.5 passes). The artefact under test stays
+// DER: the positional certificate, `-in` and `-inform DER` are decoded by
+// OSSL_STORE on every 3.x.
+
+/**
+ * The path OpenSSL receives for a trust file: the file itself when it is
+ * PEM (or not DER at all — OpenSSL then reports it), else its PEM re-encoding
+ * written as `<name>.pem` under `scratchDir`.
+ */
+export function pemTrustFile(file: string, scratchDir: string): string {
+    const bytes = readFileSync(file);
+    if (bytes.subarray(0, 10).toString('latin1').startsWith('-----BEGIN') || bytes[0] !== 0x30) return file;
+    const body = bytes.toString('base64').replace(/(.{64})/g, '$1\n').replace(/\n$/, '');
+    const out = join(scratchDir, `${basename(file)}.pem`);
+    mkdirSync(scratchDir, { recursive: true });
+    writeFileSync(out, `-----BEGIN CERTIFICATE-----\n${body}\n-----END CERTIFICATE-----\n`);
+    return out;
+}
+
+/** The context with every trust file (`caFile`, `untrusted`) handed over as PEM; the scratch directory is the command's output directory, else the artefact's. */
+export function withPemTrust(ctx: CommandContext): CommandContext {
+    if (ctx.caFile === undefined && ctx.untrusted === undefined) return ctx;
+    const scratch = dirname(ctx.outFile ?? ctx.file);
+    return {
+        ...ctx,
+        ...(ctx.caFile !== undefined ? { caFile: pemTrustFile(ctx.caFile, scratch) } : {}),
+        ...(ctx.untrusted !== undefined ? { untrusted: ctx.untrusted.map((u) => pemTrustFile(u, scratch)) } : {}),
+    };
+}
+
+/** Build, run and classify one corpus command (its trust files handed over as PEM). */
 export function judgeWithOpenssl(id: CommandId, ctx: CommandContext, options: RunOptions = {}): Outcome & { readonly run: OpensslRun; readonly args: readonly string[] } {
     const command = COMMANDS[id];
-    const args = command.build(ctx);
+    const args = command.build(withPemTrust(ctx));
     const run = runOpenssl(args, options);
     return { ...command.classify(run), run, args };
 }

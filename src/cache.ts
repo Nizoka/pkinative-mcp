@@ -27,6 +27,7 @@ import { existsSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileS
 import { join, resolve } from 'node:path';
 
 import { CACHE_MAX_BYTES, CACHE_TTL_SECONDS } from './caps.js';
+import { carriesSecret } from './secrets.js';
 
 const ENV_VAR = 'PKINATIVE_MCP_CACHE_DIR';
 const TTL_SECONDS = CACHE_TTL_SECONDS;
@@ -71,15 +72,30 @@ function canonicalize(input: unknown): string {
     });
 }
 
+/**
+ * True when a secret (a `password`, a `signer`) sits anywhere in the cache
+ * input, at any depth the server wraps it (`{ input, pinnedInstant }`). The
+ * cache gate of src/server.ts (`isCacheable`) already refuses such a call;
+ * this is the local invariant of the key: a secret is never hashed, so the
+ * key — a content address, not a password hash — can never be derived from one.
+ */
+function holdsSecret(value: unknown, depth = 0): boolean {
+    if (depth > 4 || value === null || typeof value !== 'object') return false;
+    if (Array.isArray(value)) return value.some((v) => holdsSecret(v, depth + 1));
+    if (carriesSecret(value)) return true;
+    return Object.values(value as Record<string, unknown>).some((v) => holdsSecret(v, depth + 1));
+}
+
+/** The content address of a call: SHA-256 of the canonical JSON of `{ tool, apiVersion, input }` — never computed over a secret. */
 function computeKey(tool: string, apiVersion: string, input: unknown): string {
     const payload = canonicalize({ tool, apiVersion, input });
     return createHash('sha256').update(payload).digest('hex');
 }
 
-/** Resolve to a cached value, or `null` on miss/disabled/expired. */
+/** Resolve to a cached value, or `null` on miss/disabled/expired — and always `null` for an input holding a secret. */
 export function getCached<V>(tool: string, apiVersion: string, input: unknown): V | null {
     const dir = getCacheDir();
-    if (dir === null) return null;
+    if (dir === null || holdsSecret(input)) return null;
     const key = computeKey(tool, apiVersion, input);
     const file = join(dir, `${key}.json`);
     if (!existsSync(file)) return null;
@@ -98,10 +114,10 @@ export function getCached<V>(tool: string, apiVersion: string, input: unknown): 
     }
 }
 
-/** Persist a value to the cache. Silently no-ops on disabled / IO errors. */
+/** Persist a value to the cache. Silently no-ops on disabled / IO errors, and never writes for an input holding a secret. */
 export function setCached<V>(tool: string, apiVersion: string, input: unknown, value: V): void {
     const dir = getCacheDir();
-    if (dir === null) return;
+    if (dir === null || holdsSecret(input)) return;
     const key = computeKey(tool, apiVersion, input);
     const file = join(dir, `${key}.json`);
     const entry: CacheEntry<V> = { tool, apiVersion, createdAt: Date.now(), value };

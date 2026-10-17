@@ -20,7 +20,10 @@
  *     function of the pinned inputs, and that is what is held.
  *   • `semantic` — SHA-256 of the canonical JSON of `structuredContent` with
  *     the volatile members removed (`evaluatedAt`, `sha256`, `sizeBytes`,
- *     `filePath`). Every read / verdict result, and a randomised artefact
+ *     `filePath`) and the host members neutralised (the Node version and the
+ *     platform `describe_engine` probes and `draft_governance_issue` records:
+ *     the baseline is made on the maintainer's machine and held on every CI
+ *     runner). Every read / verdict result, and a randomised artefact
  *     whose outer structure is not `SEQUENCE { tbs, alg, BIT STRING }` (a CMS
  *     SignedData signed by an EC key, whose SignerInfo signature cannot be
  *     cut out by position).
@@ -41,6 +44,32 @@ export type FingerprintMode = 'bytes' | 'tbs' | 'semantic';
 
 /** Members of a result that change with the run or the host, never with the behaviour. */
 export const VOLATILE_MEMBERS: readonly string[] = ['evaluatedAt', 'sha256', 'sizeBytes', 'filePath'];
+
+/**
+ * Members that name the host, not the behaviour, by the object that carries
+ * them: `describe_engine.capabilities.node` / `.platform` and
+ * `draft_governance_issue.compliance.environment.node` / `.os`. The draft
+ * markdown repeats the latter as its `- Node:` / `- OS:` lines (`HOST_LINE`).
+ */
+export const HOST_MEMBERS: Readonly<Record<string, readonly string[]>> = { capabilities: ['node', 'platform'], environment: ['node', 'os'] };
+const HOST_LINE = /^- (Node|OS): .*$/gm;
+
+/** The value with the host members removed and the host lines of every string neutralised, at every depth. */
+export function stripHost(value: unknown): unknown {
+    if (typeof value === 'string') return value.replace(HOST_LINE, '- $1: <host>');
+    if (Array.isArray(value)) return value.map(stripHost);
+    if (value === null || typeof value !== 'object') return value;
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        const members = HOST_MEMBERS[k];
+        if (members !== undefined && v !== null && typeof v === 'object' && !Array.isArray(v)) {
+            out[k] = stripHost(Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([m]) => !members.includes(m))));
+        } else {
+            out[k] = stripHost(v);
+        }
+    }
+    return out;
+}
 
 /** What fingerprinting a sample yields, independent of any baseline. */
 export interface Fingerprint {
@@ -163,7 +192,7 @@ export function stripVolatile(value: unknown, volatile: readonly string[] = VOLA
  * The semantic projection of a JSON sample: canonical JSON of the
  * `structuredContent` (the contract; the text block repeats it in prose) —
  * or, for a refusal, of `isError` and the code — without the volatile
- * members. A sequence projects every step.
+ * members and with the host members neutralised. A sequence projects every step.
  */
 export function semanticProjection(json: string): string {
     const parsed = JSON.parse(json) as Record<string, unknown>;
@@ -174,7 +203,7 @@ export function semanticProjection(json: string): string {
         const volatile = hasRandomFlag(structured) ? [...VOLATILE_MEMBERS, 'hex'] : VOLATILE_MEMBERS;
         return {
             ...(result['isError'] === true ? { isError: true, code: error?.code ?? null, message: error?.message ?? null } : {}),
-            structuredContent: stripVolatile(structured, volatile),
+            structuredContent: stripHost(stripVolatile(structured, volatile)),
         };
     };
     const steps = parsed['steps'];

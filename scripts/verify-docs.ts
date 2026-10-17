@@ -211,6 +211,11 @@ export const OFFLINE_RULES = [
 // ── Helpers ─────────────────────────────────────────────────────────
 
 /** Line number (1-based) of a character offset. */
+/** `s` as a literal inside a RegExp source: every metacharacter, the backslash included, escaped. */
+export function escapeRegExp(s: string): string {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export function lineOf(text: string, index: number): number {
     let line = 1;
     for (let i = 0; i < index && i < text.length; i++) {
@@ -614,7 +619,7 @@ export async function verifyDocs(root: string, options: VerifyOptions = {}): Pro
 
     // ── Rule: version-token ───────────────────────────────────────
     for (const [name, pkg] of Object.entries(manifest.packages)) {
-        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escaped = escapeRegExp(name);
         const re = new RegExp(
             `\\b${escaped}(?![\\w-])[^\\n'"\`/().]{0,60}?(?<![\\^~\\d.§])(?<![<>≥≤=]\\s{0,3})\\bv?(\\d+\\.\\d+\\.\\d+)\\b`,
             'g',
@@ -883,7 +888,7 @@ export async function verifyDocs(root: string, options: VerifyOptions = {}): Pro
         const changelog = readDoc('CHANGELOG.md', 'changelog-ladder', 'every release has its entry and compare link');
         if (changelog !== null) {
             for (const f of checkChangelogLadder(changelog)) fail('CHANGELOG.md', f.line, 'changelog-ladder', f.message);
-            if (selfVersion !== '' && !new RegExp(`^## \\[${selfVersion.replace(/\./g, '\\.')}\\]`, 'm').test(changelog)) {
+            if (selfVersion !== '' && !new RegExp(`^## \\[${escapeRegExp(selfVersion)}\\]`, 'm').test(changelog)) {
                 fail('CHANGELOG.md', 1, 'changelog-ladder', `has no "## [${selfVersion}]" entry — release-notes/v${selfVersion}.md is mirrored into it`);
             }
         }

@@ -38,6 +38,7 @@ import { WRAPPER_CODE_NAMES } from '../src/wrapper-codes.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const file = (rel: string): string => path.join(ROOT, rel);
+const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const read = (rel: string): string => readFileSync(file(rel), 'utf8');
 const has = (rel: string): boolean => existsSync(file(rel));
 
@@ -264,7 +265,7 @@ describe('tool count and version in the package, registry and citation metadata'
     });
 
     it.skipIf(!has('CITATION.cff'))('CITATION.cff carries the package version', () => {
-        expect(read('CITATION.cff')).toMatch(new RegExp(`^version:\\s*["']?${PKINATIVE_MCP_VERSION.replace(/\./g, '\\.')}["']?\\s*$`, 'm'));
+        expect(read('CITATION.cff')).toMatch(new RegExp(`^version:\\s*["']?${escapeRegExp(PKINATIVE_MCP_VERSION)}["']?\\s*$`, 'm'));
     });
 
     it.skipIf(!has('AGENTS.md'))('AGENTS.md quotes the tool and prompt counts', () => {

@@ -108,7 +108,8 @@ describe('validateIssueMarkdown', () => {
         const module = await fs.readFile(path.join(ROOT, 'src', 'governance.ts'), 'utf8');
         const patternsOf = (text: string): string[] => {
             const block = /DEPENDENCY_PATTERNS[^=]*=\s*\[([\s\S]*?)\];/.exec(text)?.[1] ?? '';
-            return [...block.matchAll(/\/(?:\\.|[^/\n])+\/[a-z]*/g)].map((m) => m[0]);
+            // A backslash is only ever the start of an escape: the two alternatives never overlap (no exponential backtracking).
+            return [...block.matchAll(/\/(?:\\.|[^/\\\n])+\/[a-z]*/g)].map((m) => m[0]);
         };
         const fromCli = patternsOf(cli);
         expect(fromCli.length).toBeGreaterThanOrEqual(5);

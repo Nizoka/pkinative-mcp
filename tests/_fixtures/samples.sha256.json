@@ -289,13 +289,13 @@
     },
     "describe-engine.json": {
       "mode": "semantic",
-      "hash": "2dfe6c9362d437308263832770b545f3533fc1471a5333eb96b689799c3872c7",
+      "hash": "f4128cd2ae681f4e154dd6a6f9b750f53e34c532c1406bc237074a5deeffbec8",
       "size": 687,
       "since": "1.0.0"
     },
     "draft-governance-issue.json": {
       "mode": "semantic",
-      "hash": "69b7394a14174c4973c8decacb3fbf1eb69501c0419d6d05fd5aeef2be10de4b",
+      "hash": "8c8e5759820cae45143c818362520d653616bed5dc24281f5d24ae96e6fde0c5",
       "size": 4381,
       "since": "1.0.0"
     },
@@ -530,7 +530,7 @@
     "sign-cms-detached-then-verify.step1.p7s": {
       "mode": "semantic",
       "hash": "03a741b9ed1cf2b5f5049997b23674234eaeb81a6f96d7e9efe9556c72d04751",
-      "size": 1726,
+      "size": 1725,
       "since": "1.0.0"
     },
     "validate-certificate-path-structure-only.json": {

@@ -181,7 +181,10 @@ All 34 tools shipped through pkinative-mcp 1.0.0 are at `_meta.apiVersion = '1.0
 > CertificationRequestInfo of an ECDSA or RSA-PSS artefact, whose signature value cannot
 > repeat but whose signed part is a pure function of the inputs) and **85 in `semantic` mode**
 > (SHA-256 of the canonical JSON of `structuredContent` without the volatile members
-> `evaluatedAt`, `sha256`, `sizeBytes`, `filePath` — every read / verdict result, and a
+> `evaluatedAt`, `sha256`, `sizeBytes`, `filePath`, and with the host members neutralised —
+> the Node version and the platform `describe_engine.capabilities` probes and
+> `draft_governance_issue` records, so the baseline made on one machine holds on every CI
+> runner — every read / verdict result, and a
 > randomised CMS whose SignerInfo cannot be cut out by position). The baseline is a chain:
 > each entry records the release whose output it is (`since`), an unchanged entry keeps it,
 > and `--update` is used only with a rebaseline declared in the release note. The OpenSSL

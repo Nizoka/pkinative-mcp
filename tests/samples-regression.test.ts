@@ -21,9 +21,9 @@ import { describe, expect, it } from 'vitest';
 
 import { loadExamples, type Example } from '../scripts/lib/example-runner.js';
 import {
-    BASELINE_AT, BASELINE_PATH, IDENTICAL_SAMPLE_GROUPS, MANIFEST_PATH, OUTPUT_DIR, REPO_ROOT, VOLATILE_MEMBERS,
+    BASELINE_AT, BASELINE_PATH, HOST_MEMBERS, IDENTICAL_SAMPLE_GROUPS, MANIFEST_PATH, OUTPUT_DIR, REPO_ROOT, VOLATILE_MEMBERS,
     argsAskRandom, canonicalJson, chainSince, compareToBaseline, currentVersion, derOf, fingerprint, fingerprintAll, firstElementOfSequence,
-    hasRandomFlag, loadBaseline, loadManifest, looksSigned, modeFor, relPath, semanticProjection, sha256Hex, signerIsRandomised, stripVolatile,
+    hasRandomFlag, loadBaseline, loadManifest, looksSigned, modeFor, relPath, semanticProjection, sha256Hex, signerIsRandomised, stripHost, stripVolatile,
     unexpectedDuplicates, walkSamples,
     type Baseline, type Fingerprint, type FingerprintMode,
 } from '../scripts/lib/sample-fingerprint.js';
@@ -360,6 +360,24 @@ describe('sample fingerprint helpers', () => {
         expect(semanticProjection(randomHex)).toBe('{"structuredContent":{"summary":{"randomNonce":true}}}');
         const pinnedHex = JSON.stringify({ structuredContent: { hex: '3082', summary: { randomNonce: false, nonce: '42' } } });
         expect(semanticProjection(pinnedHex)).toBe('{"structuredContent":{"hex":"3082","summary":{"nonce":"42","randomNonce":false}}}');
+    });
+
+    it('neutralises the host members: the same describe_engine and draft_governance_issue results project identically from win32 / Node 22 and linux / Node 24', () => {
+        expect(HOST_MEMBERS).toEqual({ capabilities: ['node', 'platform'], environment: ['node', 'os'] });
+        const engine = (node: string, platform: string): string => JSON.stringify({ structuredContent: { server: { toolCount: 34 }, capabilities: { canVerify: true, canSign: true, canDecrypt: true, node, nodeFloorSatisfied: true, platform }, network: 'none' } });
+        expect(semanticProjection(engine('v22.20.0', 'win32'))).toBe(semanticProjection(engine('v24.11.0', 'linux')));
+        expect(semanticProjection(engine('v22.20.0', 'win32'))).toBe('{"structuredContent":{"capabilities":{"canDecrypt":true,"canSign":true,"canVerify":true,"nodeFloorSatisfied":true},"network":"none","server":{"toolCount":34}}}');
+        const draft = (node: string, os: string): string => JSON.stringify({ structuredContent: {
+            title: 't', sizeBytes: 10 + node.length + os.length,
+            draftMarkdown: `# t\n\n## Environment\n\n- Node: ${node}\n- OS: ${os}\n- pkinative-mcp: 1.0.0\n- Affected packages: pkinative\n`,
+            compliance: { zeroDependencyConfirmed: true, environment: { node, os, pkinativeMcp: '1.0.0' } },
+        } });
+        expect(semanticProjection(draft('v22.20.0', 'win32 10.0.26200'))).toBe(semanticProjection(draft('v24.11.0', 'linux 6.11.0-1018-azure')));
+        expect(semanticProjection(draft('v22.20.0', 'win32 10.0.26200'))).toContain('- Node: <host>\\n- OS: <host>\\n- pkinative-mcp: 1.0.0');
+        expect(semanticProjection(draft('v22.20.0', 'win32 10.0.26200'))).toContain('"environment":{"pkinativeMcp":"1.0.0"}');
+        // Only the two carriers are touched: a `node` or `os` member elsewhere, and a `capabilities` array, are behaviour.
+        expect(stripHost({ node: 1, os: 'x', capabilities: ['a'], nested: { environment: { os: 'y', keep: 1 }, text: 'OS: not a list line' } })).toEqual({ node: 1, os: 'x', capabilities: ['a'], nested: { environment: { keep: 1 }, text: 'OS: not a list line' } });
+        expect(semanticProjection(JSON.stringify({ structuredContent: { node: 1 } }))).toBe('{"structuredContent":{"node":1}}');
     });
 
     it('reads the DER of a PEM or raw file, recognises a signed structure, and cuts out its first element', () => {

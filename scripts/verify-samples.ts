@@ -76,7 +76,10 @@ function saveBaseline(entries: Record<string, Fingerprint>, previous: Baseline |
             + '`tbs` is a SHA-256 of the signed part only (ECDSA and RSA-PSS draw a random per '
             + 'signature, so the signature value can never repeat but what was signed must); mode '
             + '`semantic` is a SHA-256 of the canonical JSON of the result without its volatile '
-            + 'members (evaluatedAt, sha256, sizeBytes, filePath). Each entry\'s `since` names the '
+            + 'members (evaluatedAt, sha256, sizeBytes, filePath) and with its host members neutralised '
+            + '(the Node version and the platform of capabilities and environment, and the Node / OS '
+            + 'lines of a governance draft: the baseline is made on one machine and held on every CI '
+            + 'runner). Each entry\'s `since` names the '
             + 'release whose output the hash is: it is carried forward untouched while the sample is '
             + 'unchanged, and moves to the release doing the rebaseline when the hash changes, so the '
             + 'chain 1.0.0 -> 1.1.0 -> … stays auditable and every re-anchoring is visible in the diff.',

@@ -209,7 +209,8 @@ npm run build && npm run test:generate && npm run verify:samples
   signed part** (`tbs`: the TBSCertificate / CertificationRequestInfo of an ECDSA or RSA-PSS
   artefact, whose signature value cannot repeat) and **85 through a semantic projection**
   (`semantic`: the canonical JSON of `structuredContent` without `evaluatedAt`, `sha256`,
-  `sizeBytes`, `filePath` — every read / verdict result and a randomised CMS). The modes
+  `sizeBytes`, `filePath`, the Node version and the platform of `describe_engine` and
+  `draft_governance_issue` neutralised — every read / verdict result and a randomised CMS). The modes
   are defined once in `scripts/lib/sample-fingerprint.ts`. Exit 0 match, 1 a changed or
   removed sample, 2 usage or missing samples. `npx tsx scripts/verify-samples.ts --strict`
   also fails on a new, unbaselined sample.

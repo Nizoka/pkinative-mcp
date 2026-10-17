@@ -83,8 +83,8 @@ function artefactOf(r: AgentCallToolResult): { base64: string; bytes: Uint8Array
     assertValidDer(bytes);
     return { base64: Buffer.from(bytes).toString('base64'), bytes, mimeType: res.mimeType ?? '' };
 }
-function linkOf(r: AgentCallToolResult): { uri: string; mimeType: string } {
-    const link = r.content.find((c) => c.type === 'resource_link') as { uri: string; mimeType: string } | undefined;
+function linkOf(r: AgentCallToolResult): { uri: string; name: string; mimeType: string } {
+    const link = r.content.find((c) => c.type === 'resource_link') as { uri: string; name: string; mimeType: string } | undefined;
     expect(link, 'resource_link block').toBeDefined();
     return link!;
 }
@@ -232,7 +232,12 @@ describe.each(AGENT_TRANSPORTS)('autonomous scenario over %s', (transport) => {
             expect(linkOf(ca).uri.endsWith('.pem')).toBe(true);
             expect(sc(ca)['summary']).toMatchObject({ selfSigned: true, signatureVerified: true, randomSerial: false });
             expect(existsSync(path.join(sandbox, 'issued', 'ca.crt.pem'))).toBe(true);
-            expect(JSON.stringify(ca)).not.toContain(sandbox);
+            // filePath is the one documented absolute path (the host opens the file with it); the link and its name stay relative to the sandbox.
+            const filePath = String(sc(ca)['filePath']);
+            expect(path.isAbsolute(filePath)).toBe(true);
+            expect(filePath.endsWith(path.join('issued', 'ca.crt.pem'))).toBe(true);
+            expect(linkOf(ca).name).toBe('issued/ca.crt.pem');
+            expect(linkOf(ca).uri).not.toContain(sandbox);
 
             const csr = ok(await agent.callTool('create_csr', { spec: { subject: { CN: 'svc.example.test' }, extensions: { subjectAltName: { dns: ['svc.example.test'] }, keyUsage: ['digitalSignature'], extendedKeyUsage: ['serverAuth'] } }, signer: { key: fx('leaf.key.pem') }, encoding: 'der', outputMode: 'file', outputPath: 'issued/svc.csr' }));
             expect(linkOf(csr).uri).toBe('pkinative://output/issued/svc.csr');

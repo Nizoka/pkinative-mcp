@@ -2,13 +2,16 @@
 // version gate, the locator, the command builders and the outcome
 // classifiers — fed inline output, nothing spawned.
 
-import { describe, it, expect } from 'vitest';
-import { resolve } from 'node:path';
+import { describe, it, expect, afterAll } from 'vitest';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 import {
     COMMANDS, COMMAND_IDS, classifyCmsVerify, classifyDump, classifyReqVerify, classifyVerify, judgeOpensslVersion, locateOpenssl, locateOpensslOrReason,
-    opensslMissing, parseOpensslVersion,
+    opensslMissing, parseOpensslVersion, pemTrustFile, withPemTrust,
 } from '../../scripts/lib/interop-tools.js';
+import { fixture, fixtureBytes } from '../_pki-fixtures.js';
 
 const ROOT = resolve(import.meta.dirname, '..', '..');
 
@@ -83,6 +86,46 @@ describe('interop-tools: command builders', () => {
             expect(COMMANDS[id].id).toBe(id);
             expect(COMMANDS[id].describe.length).toBeGreaterThan(5);
         }
+    });
+});
+
+describe('interop-tools: trust files are handed to OpenSSL as PEM (OpenSSL 3.0 reads -CAfile / -untrusted as PEM only)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pkinative-interop-tools-'));
+    afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+    it('re-encodes a DER trust file as PEM under the scratch directory and leaves a PEM file untouched', () => {
+        const der = join(dir, 'ca.crt');
+        writeFileSync(der, fixtureBytes('leaf.crt.der'));
+        const scratch = join(dir, 'out');
+        const pem = pemTrustFile(der, scratch);
+        expect(pem).toBe(join(scratch, 'ca.crt.pem'));
+        const text = readFileSync(pem, 'utf8');
+        expect(text.startsWith('-----BEGIN CERTIFICATE-----\n')).toBe(true);
+        expect(text.endsWith('\n-----END CERTIFICATE-----\n')).toBe(true);
+        expect(text.split('\n').every((line) => line.length <= 64)).toBe(true);
+        expect(Buffer.from(text.replace(/-----[A-Z ]+-----/g, '').replace(/\s+/g, ''), 'base64').equals(Buffer.from(fixtureBytes('leaf.crt.der')))).toBe(true);
+        expect(pemTrustFile(fixture('leaf.crt.pem'), scratch)).toBe(fixture('leaf.crt.pem'));
+        const junk = join(dir, 'junk.crt');
+        writeFileSync(junk, 'not a certificate');
+        expect(pemTrustFile(junk, scratch)).toBe(junk);
+    });
+
+    it('converts caFile and every untrusted file next to the command output, never the artefact under test', () => {
+        const leaf = join(dir, 'leaf.der');
+        const ca = join(dir, 'root.der');
+        const inter = join(dir, 'inter.der');
+        writeFileSync(leaf, fixtureBytes('leaf.crt.der'));
+        writeFileSync(ca, fixtureBytes('root.crt.der'));
+        writeFileSync(inter, fixtureBytes('inter.crt.der'));
+        const ctx = withPemTrust({ file: leaf, caFile: ca, untrusted: [inter], outFile: join(dir, 'reports', 'verify.out'), attime: 1 });
+        expect(ctx.file).toBe(leaf);
+        expect(ctx.caFile).toBe(join(dir, 'reports', 'root.der.pem'));
+        expect(ctx.untrusted).toEqual([join(dir, 'reports', 'inter.der.pem')]);
+        expect(ctx.attime).toBe(1);
+        expect(COMMANDS['verify'].build(ctx)).toEqual(['verify', '-CAfile', ctx.caFile, '-untrusted', ctx.untrusted?.[0], '-attime', '1', leaf]);
+        const plain = { file: leaf };
+        expect(withPemTrust(plain)).toBe(plain);
+        expect(withPemTrust({ file: leaf, caFile: ca }).caFile).toBe(join(dir, 'root.der.pem'));
     });
 });
 

@@ -80,4 +80,20 @@ describe('cache', () => {
         const stat = statSync(join(cacheDir, files[0]!));
         expect(stat.size).toBeGreaterThan(0);
     });
+
+    it('never hashes a secret: an input holding a password or a signer, at any depth, is neither written nor read', () => {
+        const secretInputs: unknown[] = [
+            { pkcs12: { derBase64: 'MIIB' }, password: 'not-for-the-cache' },
+            { spec: {}, signer: { key: { pem: '' } } },
+            { input: { certificate: { pem: '' }, password: 'not-for-the-cache' }, pinnedInstant: null },
+            { input: { signer: { key: { pem: '' } } }, pinnedInstant: '2027-01-01T00:00:00.000Z' },
+        ];
+        for (const input of secretInputs) {
+            setCached('toolA', '1.0.0', input, { leaked: true });
+            expect(readdirSync(cacheDir), JSON.stringify(input)).toEqual([]);
+            expect(getCached('toolA', '1.0.0', input), JSON.stringify(input)).toBeNull();
+        }
+        setCached('toolA', '1.0.0', { input: { certificate: { pem: '' } }, pinnedInstant: null }, { ok: true });
+        expect(readdirSync(cacheDir)).toHaveLength(1);
+    });
 });
