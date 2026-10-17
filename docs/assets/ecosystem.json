@@ -24,7 +24,7 @@
     }
   },
   "declared": {
-    "tests": 2275,
+    "tests": 2372,
     "coverageStatements": 94,
     "coverageBranches": 90,
     "coverageFunctions": 95,
@@ -39,7 +39,7 @@
     "typeExports": 177,
     "fixtures": 42,
     "dependencies": 3,
-    "toolsListBytes": 427850,
+    "toolsListBytes": 431641,
     "instructionsBytes": 5469,
     "nodeMajor": 22,
     "nodeFloor": "^22.22.2 || ^24.14.1 || >=25.8.2",
